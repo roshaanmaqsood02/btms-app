@@ -50,8 +50,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { LoadingState } from "@/components/common/loadingState";
-import { NoProfileState } from "./components/NoProfileState";
 import { Navigation } from "@/components/common/navigation";
+import { NoProfileStates } from "./components/NoProfileState";
 
 export default function Profile() {
   const router = useRouter();
@@ -203,7 +203,7 @@ export default function Profile() {
 
   // If no profile data
   if (!profileData) {
-    return <NoProfileState />;
+    return <NoProfileStates />;
   }
 
   return (
@@ -214,8 +214,8 @@ export default function Profile() {
       <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="space-y-8">
           {/* Profile Header */}
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-[rgb(96,57,187)] to-[rgb(120,80,200)] text-white rounded-t-lg">
+          <Card className="border-0 shadow-lg p-0">
+            <CardHeader className="bg-gradient-to-r from-[rgb(96,57,187)] to-[rgb(120,80,200)] text-white rounded-t-lg p-2">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
                   <User className="h-8 w-8" />

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
-export function NoProfileState() {
+export function NoProfileStates() {
   const router = useRouter();
 
   return (
