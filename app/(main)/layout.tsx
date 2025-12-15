@@ -1,3 +1,4 @@
+import NavigationWrapper from "@/components/common/navbarWrapper";
 import Sidebar from "@/components/common/sidebar";
 import { Metadata } from "next";
 
@@ -16,8 +17,13 @@ export default function MainLayout({
       {/* Sidebar */}
       <Sidebar />
 
-      {/* Page Content */}
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      <div className="flex flex-col flex-1">
+        {/* Navigation */}
+        <NavigationWrapper />
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </div>
     </div>
   );
 }

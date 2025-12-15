@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -30,13 +31,22 @@ interface MenuItem {
   id: string;
   label: string;
   icon: React.ReactNode;
-  subItems?: MenuItem[];
+  url?: string; // Added URL property
+  subItems?: SubMenuItem[];
   hasSubItems?: boolean;
 }
 
+interface SubMenuItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  url: string; // URL for subitems
+}
+
 export default function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeItem, setActiveItem] = useState("dashboard");
+  const router = useRouter();
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [activeItem, setActiveItem] = useState<string>("dashboard");
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -54,6 +64,17 @@ export default function Sidebar() {
     );
   };
 
+  // Handle navigation
+  const handleNavigation = (url?: string, itemId?: string) => {
+    if (!url) return;
+
+    if (itemId) {
+      setActiveItem(itemId);
+    }
+
+    router.push(url);
+  };
+
   // Handle scroll on sidebar only
   useEffect(() => {
     const sidebar = sidebarRef.current;
@@ -69,37 +90,43 @@ export default function Sidebar() {
     return () => window.removeEventListener("wheel", handleWheel);
   }, []);
 
-  // Menu items data
+  // Menu items data with URLs
   const menuItems: MenuItem[] = [
     {
       id: "dashboard",
       label: "Dashboard",
       icon: <Home size={20} />,
+      url: "/dashboard",
     },
     {
       id: "users",
       label: "Users",
       icon: <Users size={20} />,
+      url: "/users",
     },
     {
       id: "attendance",
       label: "Attendance",
       icon: <Calendar size={20} />,
+      url: "/attendance",
     },
     {
       id: "payroll",
       label: "Payroll",
       icon: <CreditCard size={20} />,
+      url: "/payroll",
     },
     {
       id: "requests",
       label: "Requests",
       icon: <FileText size={20} />,
+      url: "/requests",
     },
     {
       id: "assessment",
       label: "Assessment",
       icon: <BarChart size={20} />,
+      url: "/assessment",
     },
     {
       id: "tax",
@@ -111,8 +138,14 @@ export default function Sidebar() {
           id: "tax-details",
           label: "Tax Details",
           icon: <FileSpreadsheet size={16} />,
+          url: "/tax/tax-detail",
         },
-        { id: "tax-slabs", label: "Tax Slabs", icon: <Layers size={16} /> },
+        {
+          id: "tax-slabs",
+          label: "Tax Slabs",
+          icon: <Layers size={16} />,
+          url: "/tax/tax-slabs",
+        },
       ],
     },
     {
@@ -125,9 +158,20 @@ export default function Sidebar() {
           id: "applicants",
           label: "Applicants",
           icon: <UserCheck size={16} />,
+          url: "/recruitment/applicants",
         },
-        { id: "business", label: "Business", icon: <Building size={16} /> },
-        { id: "jobs", label: "Jobs", icon: <Megaphone size={16} /> },
+        {
+          id: "business",
+          label: "Business",
+          icon: <Building size={16} />,
+          url: "/recruitment/business",
+        },
+        {
+          id: "jobs",
+          label: "Jobs",
+          icon: <Megaphone size={16} />,
+          url: "/recruitment/jobs",
+        },
       ],
     },
     {
@@ -136,21 +180,48 @@ export default function Sidebar() {
       icon: <Settings size={20} />,
       hasSubItems: true,
       subItems: [
-        { id: "teams", label: "Teams", icon: <Users size={16} /> },
+        {
+          id: "teams",
+          label: "Teams",
+          icon: <Users size={16} />,
+          url: "/settings/teams",
+        },
         {
           id: "departments",
           label: "Departments",
           icon: <Building size={16} />,
+          url: "/settings/departments",
         },
         {
           id: "designation",
           label: "Designation",
           icon: <Briefcase size={16} />,
+          url: "/settings/designations",
         },
-        { id: "positions", label: "Positions", icon: <Users size={16} /> },
-        { id: "holidays", label: "Holidays", icon: <Calendar size={16} /> },
-        { id: "shifts", label: "Shifts", icon: <Calendar size={16} /> },
-        { id: "contracts", label: "Contracts", icon: <FileText size={16} /> },
+        {
+          id: "positions",
+          label: "Positions",
+          icon: <Users size={16} />,
+          url: "/settings/positions",
+        },
+        {
+          id: "holidays",
+          label: "Holidays",
+          icon: <Calendar size={16} />,
+          url: "/settings/holidays",
+        },
+        {
+          id: "shifts",
+          label: "Shifts",
+          icon: <Calendar size={16} />,
+          url: "/settings/shifts",
+        },
+        {
+          id: "contracts",
+          label: "Contracts",
+          icon: <FileText size={16} />,
+          url: "/settings/contracts",
+        },
       ],
     },
     {
@@ -159,8 +230,18 @@ export default function Sidebar() {
       icon: <Globe size={20} />,
       hasSubItems: true,
       subItems: [
-        { id: "quotations", label: "Quotations", icon: <FileText size={16} /> },
-        { id: "gallery", label: "Gallery", icon: <ImageIcon size={16} /> },
+        {
+          id: "quotations",
+          label: "Quotations",
+          icon: <FileText size={16} />,
+          url: "/general/quotations",
+        },
+        {
+          id: "gallery",
+          label: "Gallery",
+          icon: <ImageIcon size={16} />,
+          url: "/general/gallery",
+        },
       ],
     },
   ];
@@ -228,8 +309,8 @@ export default function Sidebar() {
               onClick={() => {
                 if (item.hasSubItems && !isCollapsed) {
                   toggleExpand(item.id);
-                } else {
-                  setActiveItem(item.id);
+                } else if (item.url) {
+                  handleNavigation(item.url, item.id);
                 }
               }}
               className={cn(
@@ -265,7 +346,7 @@ export default function Sidebar() {
                   {item.subItems?.map((subItem) => (
                     <button
                       key={subItem.id}
-                      onClick={() => setActiveItem(subItem.id)}
+                      onClick={() => handleNavigation(subItem.url, subItem.id)}
                       className={cn(
                         "w-full flex items-center gap-3 px-2 py-1.5 transition-all duration-200",
                         activeItem === subItem.id
