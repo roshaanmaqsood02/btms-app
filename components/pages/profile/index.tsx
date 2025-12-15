@@ -1,4 +1,3 @@
-// src/app/profile/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -50,6 +49,9 @@ import {
   Lock,
   AlertTriangle,
 } from "lucide-react";
+import { LoadingState } from "@/components/common/loadingState";
+import { NoProfileState } from "./components/NoProfileState";
+import { Navigation } from "@/components/common/navigation";
 
 export default function Profile() {
   const router = useRouter();
@@ -196,63 +198,18 @@ export default function Profile() {
 
   // Loading state
   if (isProfileLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-[rgb(96,57,187)] mx-auto" />
-          <p className="text-gray-600">Loading profile...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState />;
   }
 
   // If no profile data
   if (!profileData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center space-y-4">
-          <p className="text-gray-600">No profile data available</p>
-          <Button
-            onClick={() => router.push("/login")}
-            className="bg-[rgb(96,57,187)] hover:bg-[rgb(86,47,177)]"
-          >
-            Go to Login
-          </Button>
-        </div>
-      </div>
-    );
+    return <NoProfileState />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                My Profile
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={() => router.push("/dashboard")}
-                variant="outline"
-                className="text-gray-700"
-              >
-                Dashboard
-              </Button>
-              <Button
-                onClick={handleLogout}
-                variant="destructive"
-                className="bg-red-500 hover:bg-red-600"
-              >
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Use Navigation component */}
+      <Navigation onLogout={handleLogout} />
 
       <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="space-y-8">
