@@ -14,7 +14,6 @@ import {
   useDeleteAccountMutation,
 } from "@/redux/services/authApi";
 
-// shadcn/ui components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,9 +47,13 @@ import {
   Phone,
   Lock,
   AlertTriangle,
+  Briefcase,
+  FolderKanban,
+  Award,
+  X,
+  Plus,
 } from "lucide-react";
 import { LoadingState } from "@/components/common/loadingState";
-import { Navigation } from "@/components/common/navigation";
 import { NoProfileStates } from "./components/NoProfileState";
 
 export default function Profile() {
@@ -82,7 +85,14 @@ export default function Profile() {
     country: "",
     phone: "",
     postalCode: "",
+    department: "",
+    projects: [] as string[],
+    positions: [] as string[],
   });
+
+  // State for adding new items
+  const [newProject, setNewProject] = useState<string>("");
+  const [newPosition, setNewPosition] = useState<string>("");
 
   // State for password change
   const [passwordData, setPasswordData] = useState({
@@ -111,6 +121,9 @@ export default function Profile() {
         country: profileData.country || "",
         phone: profileData.phone || "",
         postalCode: profileData.postalCode || "",
+        department: profileData.department || "",
+        projects: profileData.projects || [],
+        positions: profileData.positions || [],
       });
     }
   }, [profileData]);
@@ -130,12 +143,55 @@ export default function Profile() {
     }));
   };
 
+  // Array management functions
+  const addProject = () => {
+    if (newProject.trim() && !editData.projects.includes(newProject.trim())) {
+      setEditData((prev) => ({
+        ...prev,
+        projects: [...prev.projects, newProject.trim()],
+      }));
+      setNewProject("");
+    }
+  };
+
+  const removeProject = (index: number) => {
+    setEditData((prev) => ({
+      ...prev,
+      projects: prev.projects.filter((_, i) => i !== index),
+    }));
+  };
+
+  const addPosition = () => {
+    if (
+      newPosition.trim() &&
+      !editData.positions.includes(newPosition.trim())
+    ) {
+      setEditData((prev) => ({
+        ...prev,
+        positions: [...prev.positions, newPosition.trim()],
+      }));
+      setNewPosition("");
+    }
+  };
+
+  const removePosition = (index: number) => {
+    setEditData((prev) => ({
+      ...prev,
+      positions: prev.positions.filter((_, i) => i !== index),
+    }));
+  };
+
   const handleSaveProfile = async () => {
     try {
-      // Filter out empty values
-      const updateData = Object.fromEntries(
-        Object.entries(editData).filter(([_, value]) => value !== "")
-      );
+      // Filter out empty values except arrays
+      const updateData: any = {};
+      Object.entries(editData).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          updateData[key] = value;
+        } else if (value !== "") {
+          updateData[key] = value;
+        }
+      });
 
       await updateProfile(updateData).unwrap();
       await refetch(); // Refresh profile data
@@ -207,12 +263,12 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="space-y-8">
           {/* Profile Header */}
           <Card className="border-0 shadow-lg p-0">
-            <CardHeader className="bg-gradient-to-r from-[rgb(96,57,187)] to-[rgb(120,80,200)] text-white rounded-t-lg p-2">
+            <CardHeader className="bg-gradient-to-r from-[rgb(96,57,187)] to-[rgb(120,80,200)] text-white rounded-t-lg p-6">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
                   <User className="h-8 w-8" />
@@ -245,6 +301,18 @@ export default function Profile() {
                       profileData.gender?.slice(1)}
                   </Badge>
                 </div>
+
+                {profileData.department && (
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Briefcase className="h-4 w-4" />
+                      <span className="font-medium">Department:</span>
+                    </div>
+                    <Badge variant="secondary" className="text-base">
+                      {profileData.department}
+                    </Badge>
+                  </div>
+                )}
 
                 {profileData.city && (
                   <div className="space-y-2">
@@ -286,6 +354,58 @@ export default function Profile() {
                   </div>
                 )}
               </div>
+
+              {/* Projects and Positions Section */}
+              <Separator className="my-6" />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Projects */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2 text-gray-600">
+                    <FolderKanban className="h-4 w-4" />
+                    <span className="font-medium">Projects:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {profileData.projects && profileData.projects.length > 0 ? (
+                      profileData.projects.map(
+                        (project: string, index: number) => (
+                          <Badge key={index} variant="secondary">
+                            {project}
+                          </Badge>
+                        )
+                      )
+                    ) : (
+                      <span className="text-sm text-gray-500">
+                        No projects assigned
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Positions */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2 text-gray-600">
+                    <Award className="h-4 w-4" />
+                    <span className="font-medium">Positions:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {profileData.positions &&
+                    profileData.positions.length > 0 ? (
+                      profileData.positions.map(
+                        (position: string, index: number) => (
+                          <Badge key={index} variant="default">
+                            {position}
+                          </Badge>
+                        )
+                      )
+                    ) : (
+                      <span className="text-sm text-gray-500">
+                        No positions assigned
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -315,7 +435,8 @@ export default function Profile() {
                     Update your personal information here.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
+                  {/* Basic Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Full Name</Label>
@@ -345,6 +466,30 @@ export default function Profile() {
                     </div>
 
                     <div className="space-y-2">
+                      <Label htmlFor="department">Department</Label>
+                      <Input
+                        id="department"
+                        name="department"
+                        value={editData.department}
+                        onChange={handleEditChange}
+                        placeholder="e.g., Engineering, Marketing"
+                        className="rounded-xl py-6"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        value={editData.phone}
+                        onChange={handleEditChange}
+                        placeholder="Enter your phone number"
+                        className="rounded-xl py-6"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="city">City</Label>
                       <Input
                         id="city"
@@ -369,18 +514,6 @@ export default function Profile() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        value={editData.phone}
-                        onChange={handleEditChange}
-                        placeholder="Enter your phone number"
-                        className="rounded-xl py-6"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
                       <Label htmlFor="postalCode">Postal Code</Label>
                       <Input
                         id="postalCode"
@@ -390,6 +523,102 @@ export default function Profile() {
                         placeholder="Enter your postal code"
                         className="rounded-xl py-6"
                       />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Projects Section */}
+                  <div className="space-y-4">
+                    <Label className="text-base flex items-center gap-2">
+                      <FolderKanban className="h-4 w-4" />
+                      Projects
+                    </Label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {editData.projects.map((project, index) => (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="pl-3 pr-1 py-1 flex items-center gap-1"
+                        >
+                          {project}
+                          <button
+                            type="button"
+                            onClick={() => removeProject(index)}
+                            className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newProject}
+                        onChange={(e) => setNewProject(e.target.value)}
+                        onKeyPress={(e) =>
+                          e.key === "Enter" &&
+                          (e.preventDefault(), addProject())
+                        }
+                        placeholder="Add a project"
+                        className="rounded-xl"
+                      />
+                      <Button
+                        type="button"
+                        onClick={addProject}
+                        variant="outline"
+                        size="icon"
+                        className="rounded-xl"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Positions Section */}
+                  <div className="space-y-4">
+                    <Label className="text-base flex items-center gap-2">
+                      <Award className="h-4 w-4" />
+                      Positions
+                    </Label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {editData.positions.map((position, index) => (
+                        <Badge
+                          key={index}
+                          variant="default"
+                          className="pl-3 pr-1 py-1 flex items-center gap-1"
+                        >
+                          {position}
+                          <button
+                            type="button"
+                            onClick={() => removePosition(index)}
+                            className="ml-1 hover:bg-primary/80 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newPosition}
+                        onChange={(e) => setNewPosition(e.target.value)}
+                        onKeyPress={(e) =>
+                          e.key === "Enter" &&
+                          (e.preventDefault(), addPosition())
+                        }
+                        placeholder="Add a position"
+                        className="rounded-xl"
+                      />
+                      <Button
+                        type="button"
+                        onClick={addPosition}
+                        variant="outline"
+                        size="icon"
+                        className="rounded-xl"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardContent>

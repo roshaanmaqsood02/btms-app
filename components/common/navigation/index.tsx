@@ -32,7 +32,7 @@ export function Navigation({ onLogout }: NavigationProps) {
   const token = useAppSelector(selectAccessToken);
   const user = useAppSelector(selectCurrentUser);
 
-  const [pageTitle, setPageTitle] = useState("Home");
+  const [pageTitle, setPageTitle] = useState<string>("Home");
 
   // Fetch actual user from backend
   const { data, error } = useGetProfileQuery(undefined, {
@@ -73,7 +73,7 @@ export function Navigation({ onLogout }: NavigationProps) {
     <nav className="w-full">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Page Title */}
-        <h1 className="text-xl font-semibold text-gray-900">{pageTitle}</h1>
+        <h1 className="text-3xl font-semibold text-gray-900">{pageTitle}</h1>
 
         {/* User info + dropdown */}
         {token && (

@@ -1,5 +1,5 @@
 import NavigationWrapper from "@/components/common/navbarWrapper";
-import Sidebar from "@/components/common/sidebar";
+import Sidebar from "@/components/common/appSidebar";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen w-full bg-card">
+    <div className="flex h-screen w-full bg-gray-100">
       {/* Sidebar */}
       <Sidebar />
 

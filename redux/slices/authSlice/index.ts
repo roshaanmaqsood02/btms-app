@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { authApi, User, AuthResponse } from "../../services/authApi";
+import { authApi, User } from "../../services/authApi";
 
 interface AuthState {
   user: User | null;
@@ -7,6 +7,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  isInitialized: boolean;
 }
 
 const initialState: AuthState = {
@@ -15,6 +16,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  isInitialized: false,
 };
 
 // SSR-safe localStorage helpers
@@ -30,11 +32,27 @@ const getStoredUser = (): User | null => {
     const userStr = localStorage.getItem("user");
     try {
       return userStr ? JSON.parse(userStr) : null;
-    } catch {
+    } catch (error) {
+      console.error("Failed to parse stored user:", error);
+      localStorage.removeItem("user");
       return null;
     }
   }
   return null;
+};
+
+const clearStorage = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+  }
+};
+
+const setStorage = (accessToken: string, user: User) => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("user", JSON.stringify(user));
+  }
 };
 
 const authSlice = createSlice({
@@ -54,16 +72,14 @@ const authSlice = createSlice({
       state.accessToken = action.payload.accessToken;
       state.isAuthenticated = true;
       state.error = null;
+      state.isInitialized = true;
 
-      if (typeof window !== "undefined") {
-        localStorage.setItem("accessToken", action.payload.accessToken);
-        localStorage.setItem("user", JSON.stringify(action.payload.user));
-      }
+      setStorage(action.payload.accessToken, action.payload.user);
     },
 
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
-      if (typeof window !== "undefined") {
+      if (typeof window !== "undefined" && state.user) {
         localStorage.setItem("user", JSON.stringify(action.payload));
       }
     },
@@ -73,11 +89,9 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.isAuthenticated = false;
       state.error = null;
+      state.isLoading = false;
 
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("user");
-      }
+      clearStorage();
     },
 
     setLoading: (state, action: PayloadAction<boolean>) => {
@@ -91,6 +105,27 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+
+    initializeAuth: (state) => {
+      const token = getStoredToken();
+      const user = getStoredUser();
+
+      if (token && user) {
+        state.accessToken = token;
+        state.user = user;
+        state.isAuthenticated = true;
+      } else {
+        state.accessToken = null;
+        state.user = null;
+        state.isAuthenticated = false;
+      }
+      state.isInitialized = true;
+    },
+
+    resetAuth: () => {
+      clearStorage();
+      return { ...initialState, isInitialized: true };
+    },
   },
   extraReducers: (builder) => {
     // Handle successful login
@@ -102,11 +137,9 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.isLoading = false;
         state.error = null;
+        state.isInitialized = true;
 
-        if (typeof window !== "undefined") {
-          localStorage.setItem("accessToken", action.payload.accessToken);
-          localStorage.setItem("user", JSON.stringify(action.payload.user));
-        }
+        setStorage(action.payload.accessToken, action.payload.user);
       }
     );
 
@@ -119,10 +152,22 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.isLoading = false;
         state.error = null;
+        state.isInitialized = true;
 
-        if (typeof window !== "undefined") {
-          localStorage.setItem("accessToken", action.payload.accessToken);
-          localStorage.setItem("user", JSON.stringify(action.payload.user));
+        setStorage(action.payload.accessToken, action.payload.user);
+      }
+    );
+
+    // Handle successful profile fetch
+    builder.addMatcher(
+      authApi.endpoints.getProfile.matchFulfilled,
+      (state, action) => {
+        state.user = action.payload;
+        state.isLoading = false;
+        state.error = null;
+
+        if (typeof window !== "undefined" && state.user) {
+          localStorage.setItem("user", JSON.stringify(action.payload));
         }
       }
     );
@@ -135,7 +180,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = null;
 
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && state.user) {
           localStorage.setItem("user", JSON.stringify(action.payload));
         }
       }
@@ -151,31 +196,95 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = null;
 
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("user");
-        }
+        clearStorage();
       }
     );
 
-    // Handle loading states
+    // Handle logout
+    builder.addMatcher(authApi.endpoints.logout.matchFulfilled, (state) => {
+      state.user = null;
+      state.accessToken = null;
+      state.isAuthenticated = false;
+      state.isLoading = false;
+      state.error = null;
+
+      clearStorage();
+    });
+
+    // Handle loading states for auth endpoints
+    builder.addMatcher(authApi.endpoints.login.matchPending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+
+    builder.addMatcher(authApi.endpoints.register.matchPending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+
     builder.addMatcher(
-      (action) => action.type.endsWith("/pending"),
+      authApi.endpoints.updateProfile.matchPending,
       (state) => {
         state.isLoading = true;
         state.error = null;
       }
     );
 
-    // Handle error states
+    // Handle error states for auth endpoints
     builder.addMatcher(
-      (action) => action.type.endsWith("/rejected"),
+      authApi.endpoints.login.matchRejected,
       (state, action: any) => {
         state.isLoading = false;
         state.error =
-          action.error?.data?.message ||
-          action.error?.error ||
-          "An error occurred";
+          action.payload?.message || action.error?.message || "Login failed";
+      }
+    );
+
+    builder.addMatcher(
+      authApi.endpoints.register.matchRejected,
+      (state, action: any) => {
+        state.isLoading = false;
+        state.error =
+          action.payload?.message ||
+          action.error?.message ||
+          "Registration failed";
+      }
+    );
+
+    builder.addMatcher(
+      authApi.endpoints.updateProfile.matchRejected,
+      (state, action: any) => {
+        state.isLoading = false;
+        state.error =
+          action.payload?.message ||
+          action.error?.message ||
+          "Failed to update profile";
+      }
+    );
+
+    builder.addMatcher(
+      authApi.endpoints.deleteAccount.matchRejected,
+      (state, action: any) => {
+        state.isLoading = false;
+        state.error =
+          action.payload?.message ||
+          action.error?.message ||
+          "Failed to delete account";
+      }
+    );
+
+    // Handle unauthorized errors (401) - clear auth state
+    builder.addMatcher(
+      (action) => {
+        return (
+          action.type.includes("rejected") && action.payload?.status === 401
+        );
+      },
+      (state) => {
+        state.user = null;
+        state.accessToken = null;
+        state.isAuthenticated = false;
+        clearStorage();
       }
     );
   },
@@ -188,6 +297,8 @@ export const {
   setLoading,
   setError,
   clearError,
+  initializeAuth,
+  resetAuth,
 } = authSlice.actions;
 
 export default authSlice.reducer;
@@ -202,3 +313,5 @@ export const selectIsAuthenticated = (state: { auth: AuthState }) =>
 export const selectAuthLoading = (state: { auth: AuthState }) =>
   state.auth.isLoading;
 export const selectAuthError = (state: { auth: AuthState }) => state.auth.error;
+export const selectIsInitialized = (state: { auth: AuthState }) =>
+  state.auth.isInitialized;
