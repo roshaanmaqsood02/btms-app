@@ -13,7 +13,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen w-full bg-gray-100">
+    <div className="flex h-screen w-full bg-gray-200">
       {/* Sidebar */}
       <Sidebar />
 

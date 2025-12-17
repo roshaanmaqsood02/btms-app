@@ -7,7 +7,6 @@ import type {
   RegisterRequest,
   UpdateProfileRequest,
   DeleteAccountRequest,
-  ApiError,
 } from "../../types/auth.type";
 
 export const authApi = createApi({
@@ -51,6 +50,18 @@ export const authApi = createApi({
       invalidatesTags: ["User"],
     }),
 
+    // Update profile picture
+    updateProfilePicture: builder.mutation<
+      { message: string; user: User },
+      FormData
+    >({
+      query: (formData) => ({
+        url: "/auth/profile/picture",
+        method: "PUT",
+        body: formData,
+      }),
+      invalidatesTags: ["User"],
+    }),
     // Delete user account
     deleteAccount: builder.mutation<{ message: string }, DeleteAccountRequest>({
       query: (data) => ({
@@ -82,6 +93,7 @@ export const {
   useGetProfileQuery,
   useLazyGetProfileQuery,
   useUpdateProfileMutation,
+  useUpdateProfilePictureMutation,
   useDeleteAccountMutation,
   useCheckAuthQuery,
   useLazyCheckAuthQuery,

@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { authApi, User } from "../../services/authApi";
+import { authApi } from "../../services/authApi";
+import { User } from "@/redux/types/auth.type";
 
 interface AuthState {
   user: User | null;
@@ -126,6 +127,16 @@ const authSlice = createSlice({
       clearStorage();
       return { ...initialState, isInitialized: true };
     },
+
+    // Add new action for profile picture update
+    updateUserProfilePicture: (state, action: PayloadAction<string>) => {
+      if (state.user) {
+        state.user.profilePic = action.payload;
+        if (typeof window !== "undefined") {
+          localStorage.setItem("user", JSON.stringify(state.user));
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     // Handle successful login
@@ -186,6 +197,19 @@ const authSlice = createSlice({
       }
     );
 
+    // Handle successful profile picture update
+    builder.addMatcher(
+      authApi.endpoints.updateProfilePicture.matchFulfilled,
+      (state, action) => {
+        state.user = action.payload.user;
+        state.isLoading = false;
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem("user", JSON.stringify(state.user));
+        }
+      }
+    );
+
     // Handle successful account deletion
     builder.addMatcher(
       authApi.endpoints.deleteAccount.matchFulfilled,
@@ -230,6 +254,14 @@ const authSlice = createSlice({
       }
     );
 
+    builder.addMatcher(
+      authApi.endpoints.updateProfilePicture.matchPending,
+      (state) => {
+        state.isLoading = true;
+        state.error = null;
+      }
+    );
+
     // Handle error states for auth endpoints
     builder.addMatcher(
       authApi.endpoints.login.matchRejected,
@@ -259,6 +291,17 @@ const authSlice = createSlice({
           action.payload?.message ||
           action.error?.message ||
           "Failed to update profile";
+      }
+    );
+
+    builder.addMatcher(
+      authApi.endpoints.updateProfilePicture.matchRejected,
+      (state, action: any) => {
+        state.isLoading = false;
+        state.error =
+          action.payload?.message ||
+          action.error?.message ||
+          "Failed to update profile picture";
       }
     );
 
@@ -299,6 +342,7 @@ export const {
   clearError,
   initializeAuth,
   resetAuth,
+  updateUserProfilePicture, // Export the new action
 } = authSlice.actions;
 
 export default authSlice.reducer;

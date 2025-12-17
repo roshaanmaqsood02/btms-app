@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   useLoginMutation,
   useRegisterMutation,
@@ -19,14 +19,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, X, Plus, AlertCircle } from "lucide-react";
+import { Loader2, X, Plus, AlertCircle, Camera, Upload } from "lucide-react";
 import Logo from "@/public/icons/brackets_logo.svg";
 import Illustrator from "@/public/images/illustrator.svg";
+import { useProfilePicture } from "@/hooks/useProfilePicture";
 
 export default function Login() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const authError = useAppSelector(selectAuthError);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isLogin, setIsLogin] = useState<boolean>(true);
   const [formData, setFormData] = useState({
@@ -43,14 +45,23 @@ export default function Login() {
     positions: [] as string[],
   });
 
+  // Profile picture preview
+  const [profilePreview, setProfilePreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   // Temporary state for adding projects and positions
   const [newProject, setNewProject] = useState<string>("");
   const [newPosition, setNewPosition] = useState<string>("");
 
   const [login, { isLoading: isLoginLoading }] = useLoginMutation();
   const [register, { isLoading: isRegisterLoading }] = useRegisterMutation();
+  const {
+    uploadProfilePicture,
+    isLoading: isUploadingPic,
+    error: uploadError,
+  } = useProfilePicture();
 
-  const isLoading = isLoginLoading || isRegisterLoading;
+  const isLoading = isLoginLoading || isRegisterLoading || isUploadingPic;
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -61,6 +72,51 @@ export default function Login() {
       [name]: value,
     }));
     dispatch(clearError());
+  };
+
+  // Handle profile picture selection
+  const handleProfilePictureChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        dispatch(setError("Please select a valid image file"));
+        return;
+      }
+
+      // Validate file size (e.g., 5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        dispatch(setError("Image size should be less than 5MB"));
+        return;
+      }
+
+      setSelectedFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      dispatch(clearError());
+    }
+  };
+
+  // Remove profile picture
+  const removeProfilePicture = () => {
+    setSelectedFile(null);
+    setProfilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Trigger file input click
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   // Array management functions
@@ -150,6 +206,16 @@ export default function Login() {
           })
         );
 
+        // Upload profile picture if selected
+        if (selectedFile) {
+          const uploadResult = await uploadProfilePicture(selectedFile);
+          if (!uploadResult.success) {
+            // Profile created but picture upload failed
+            console.error("Profile picture upload failed:", uploadResult.error);
+            // Still redirect to profile, user can upload later
+          }
+        }
+
         router.push("/profile");
       }
     } catch (error: any) {
@@ -178,6 +244,7 @@ export default function Login() {
     });
     setNewProject("");
     setNewPosition("");
+    removeProfilePicture();
   };
 
   return (
@@ -221,10 +288,10 @@ export default function Login() {
             </h2>
 
             {/* Error Alert */}
-            {authError && (
+            {(authError || uploadError) && (
               <Alert variant="destructive" className="w-full">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{authError}</AlertDescription>
+                <AlertDescription></AlertDescription>
               </Alert>
             )}
 
@@ -232,19 +299,72 @@ export default function Login() {
             <form className="w-full space-y-6" onSubmit={handleSubmit}>
               <div className="space-y-4">
                 {!isLogin && (
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      type="text"
-                      required={!isLogin}
-                      value={formData.name}
-                      onChange={handleChange}
-                      placeholder="Enter your full name"
-                      className="py-6 text-base rounded-xl"
-                    />
-                  </div>
+                  <>
+                    {/* Profile Picture Upload */}
+                    <div className="space-y-2">
+                      <Label>Profile Picture</Label>
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="relative">
+                          <div className="w-32 h-32 rounded-full border-4 border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center">
+                            {profilePreview ? (
+                              <img
+                                src={profilePreview}
+                                alt="Profile preview"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Camera className="w-12 h-12 text-gray-400" />
+                            )}
+                          </div>
+                          {profilePreview && (
+                            <button
+                              type="button"
+                              onClick={removeProfilePicture}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfilePictureChange}
+                          className="hidden"
+                        />
+
+                        <Button
+                          type="button"
+                          onClick={triggerFileInput}
+                          variant="outline"
+                          className="rounded-xl"
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          {profilePreview ? "Change Picture" : "Upload Picture"}
+                        </Button>
+
+                        <p className="text-xs text-gray-500 text-center">
+                          Recommended: Square image, max 5MB
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name *</Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        type="text"
+                        required={!isLogin}
+                        value={formData.name}
+                        onChange={handleChange}
+                        placeholder="Enter your full name"
+                        className="py-6 text-base rounded-xl"
+                      />
+                    </div>
+                  </>
                 )}
 
                 <div className="space-y-2">
@@ -499,7 +619,9 @@ export default function Login() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Processing...
+                      {isUploadingPic
+                        ? "Uploading Picture..."
+                        : "Processing..."}
                     </>
                   ) : isLogin ? (
                     "Login"

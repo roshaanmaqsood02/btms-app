@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppDispatch, useAppSelector } from "@/redux/hook";
 import {
   selectCurrentUser,
@@ -69,6 +69,22 @@ export function Navigation({ onLogout }: NavigationProps) {
           .toUpperCase()
       : "U";
 
+  // Construct profile picture URL with cache-busting query parameter
+  const getProfilePicUrl = () => {
+    if (!user?.profilePic) return "";
+
+    // If backend already returned full URL, use it
+    if (user.profilePic.startsWith("http")) {
+      return `${user.profilePic}?v=${Date.now()}`;
+    }
+
+    // Fallback to env URL
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+    // Ensure no double slashes
+    return `${baseUrl}/${user.profilePic.replace(/^\/+/, "")}?v=${Date.now()}`;
+  };
+
   return (
     <nav className="w-full">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -84,6 +100,14 @@ export function Navigation({ onLogout }: NavigationProps) {
                 className="flex items-center gap-3 px-2 rounded-full hover:bg-gray-100"
               >
                 <Avatar className="h-9 w-9">
+                  {/* Display profile picture if available */}
+                  {user?.profilePic && (
+                    <AvatarImage
+                      src={getProfilePicUrl()}
+                      alt={user?.name || "User"}
+                      className="object-cover"
+                    />
+                  )}
                   <AvatarFallback className="bg-indigo-600 text-white font-medium">
                     {getInitials(user?.name)}
                   </AvatarFallback>
@@ -93,7 +117,9 @@ export function Navigation({ onLogout }: NavigationProps) {
                   <span className="text-sm font-medium text-gray-900">
                     {user?.name}
                   </span>
-                  <span className="text-xs text-gray-500">{user?.email}</span>
+                  <span className="text-xs text-gray-500">
+                    {user?.positions}
+                  </span>
                 </div>
               </Button>
             </DropdownMenuTrigger>

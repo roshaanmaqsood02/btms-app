@@ -55,6 +55,9 @@ import {
 } from "lucide-react";
 import { LoadingState } from "@/components/common/loadingState";
 import { NoProfileStates } from "./components/NoProfileState";
+import { DeleteAccountDialog } from "./components/DeleteAccountDialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfilePictureUploader } from "./components/ProfilePictureUpload";
 
 export default function Profile() {
   const router = useRouter();
@@ -233,25 +236,6 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (!passwordData.currentPassword) {
-      alert("Please enter your current password to confirm account deletion");
-      return;
-    }
-
-    try {
-      await deleteAccount({
-        password: passwordData.currentPassword,
-      }).unwrap();
-
-      alert("Account deleted successfully");
-      router.push("/");
-    } catch (error: any) {
-      console.error("Delete failed:", error);
-      alert(error?.data?.message || "Failed to delete account");
-    }
-  };
-
   // Loading state
   if (isProfileLoading) {
     return <LoadingState />;
@@ -267,11 +251,18 @@ export default function Profile() {
       <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="space-y-8">
           {/* Profile Header */}
-          <Card className="border-0 shadow-lg p-0">
+          <Card className="border-0 p-0">
             <CardHeader className="bg-gradient-to-r from-[rgb(96,57,187)] to-[rgb(120,80,200)] text-white rounded-t-lg p-6">
               <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                  <User className="h-8 w-8" />
+                <div className="flex flex-col items-center space-y-4">
+                  <ProfilePictureUploader
+                    size="lg"
+                    onUploadSuccess={(profilePicUrl) => {
+                      // Refresh profile data or show success message
+                      refetch();
+                      alert("Profile picture updated successfully!");
+                    }}
+                  />
                 </div>
                 <div>
                   <CardTitle className="text-2xl">{profileData.name}</CardTitle>
@@ -731,6 +722,7 @@ export default function Profile() {
               <Separator className="my-8" />
 
               {/* Delete Account Section */}
+              {/* Delete Account Section */}
               <Card className="border-red-200 bg-red-50">
                 <CardHeader>
                   <CardTitle className="text-red-700 flex items-center">
@@ -749,63 +741,21 @@ export default function Profile() {
                   </p>
                 </CardContent>
                 <CardFooter>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        className="bg-red-600 hover:bg-red-700 rounded-xl px-8 py-6"
-                      >
-                        Delete Account
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          Are you absolutely sure?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently
-                          delete your account and remove your data from our
-                          servers.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <div className="space-y-4 py-4">
-                        <Label htmlFor="deletePassword">
-                          Enter your current password to confirm:
-                        </Label>
-                        <Input
-                          id="deletePassword"
-                          type="password"
-                          value={passwordData.currentPassword}
-                          onChange={(e) =>
-                            setPasswordData((prev) => ({
-                              ...prev,
-                              currentPassword: e.target.value,
-                            }))
-                          }
-                          placeholder="Enter your password"
-                          className="rounded-xl"
-                        />
-                      </div>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDeleteAccount}
-                          disabled={isDeleting || !passwordData.currentPassword}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          {isDeleting ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Deleting...
-                            </>
-                          ) : (
-                            "Delete Account"
-                          )}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <DeleteAccountDialog
+                    onDeleteAccount={async (password: string) => {
+                      try {
+                        await deleteAccount({ password }).unwrap();
+                        alert("Account deleted successfully");
+                        router.push("/");
+                      } catch (error: any) {
+                        console.error("Delete failed:", error);
+                        alert(
+                          error?.data?.message || "Failed to delete account"
+                        );
+                      }
+                    }}
+                    isDeleting={isDeleting}
+                  />
                 </CardFooter>
               </Card>
             </TabsContent>

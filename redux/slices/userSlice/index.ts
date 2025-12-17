@@ -1,5 +1,5 @@
+import { User } from "@/redux/types/user.type";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { User } from "../../services/userApi";
 
 interface UserFilters {
   search: string;

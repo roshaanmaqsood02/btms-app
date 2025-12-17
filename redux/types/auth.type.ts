@@ -1,10 +1,10 @@
-// Authentication related types
 export interface User {
   id: number;
   uuid?: string;
   email: string;
   name: string;
   gender: string;
+  profilePic?: string;
   city?: string;
   country?: string;
   phone?: string;
@@ -33,6 +33,7 @@ export interface RegisterRequest {
   password: string;
   name: string;
   gender: string;
+  profilePic?: string;
   city?: string;
   country?: string;
   phone?: string;
@@ -47,6 +48,7 @@ export interface UpdateProfileRequest {
   newPassword?: string;
   name?: string;
   gender?: string;
+  profilePic?: string;
   city?: string;
   country?: string;
   phone?: string;
@@ -54,6 +56,15 @@ export interface UpdateProfileRequest {
   department?: string;
   projects?: string[];
   positions?: string[];
+}
+
+export interface UpdateProfilePictureRequest {
+  profilePic: File;
+}
+
+export interface ProfilePictureResponse {
+  profilePic: string;
+  message?: string;
 }
 
 export interface DeleteAccountRequest {
@@ -66,4 +77,20 @@ export interface ApiError {
     message?: string;
     error?: string;
   };
+}
+
+export interface ExtendedApiError extends ApiError {
+  message: string;
+  code?: string;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  error?: string;
+}
+
+export interface UploadStatus {
+  progress: number;
+  status: "idle" | "uploading" | "success" | "error";
+  error?: string;
 }
