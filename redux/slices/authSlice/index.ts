@@ -359,3 +359,5 @@ export const selectAuthLoading = (state: { auth: AuthState }) =>
 export const selectAuthError = (state: { auth: AuthState }) => state.auth.error;
 export const selectIsInitialized = (state: { auth: AuthState }) =>
   state.auth.isInitialized;
+export const selectUserRole = (state: { auth: AuthState }) =>
+  state.auth.user?.systemRole ?? null;

@@ -2,8 +2,13 @@ export interface User {
   id: number;
   uuid?: string;
   email: string;
+  attendanceId: string;
   name: string;
   gender: string;
+  dateOfBirth: Date;
+  maritalStatus: string;
+  bloodGroup?: string;
+  cnic?: string;
   profilePic?: string;
   city?: string;
   country?: string;
@@ -12,6 +17,7 @@ export interface User {
   department?: string;
   projects?: string[];
   positions?: string[];
+  systemRole?: "EMPLOYEE" | "PROJECT_MANAGER" | "OPERATION_MANAGER" | "HRM";
   is_active?: boolean;
   createdAt?: string;
   updatedAt?: string;

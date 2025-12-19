@@ -1,81 +1,109 @@
 "use client";
 
 import { useState } from "react";
+import { useDeleteAccountMutation } from "@/redux/services/authApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Loader2, AlertTriangle } from "lucide-react";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 interface DeleteAccountDialogProps {
-  onDeleteAccount: (password: string) => Promise<void>;
-  isDeleting: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDeleteSuccess?: () => void;
 }
 
 export function DeleteAccountDialog({
-  onDeleteAccount,
-  isDeleting,
+  open,
+  onOpenChange,
+  onDeleteSuccess,
 }: DeleteAccountDialogProps) {
+  const [deleteAccount, { isLoading: isDeleting }] = useDeleteAccountMutation();
   const [password, setPassword] = useState("");
 
-  const handleSubmit = async () => {
-    await onDeleteAccount(password);
-    setPassword("");
+  const handleDeleteAccount = async () => {
+    if (!password.trim()) {
+      alert("Please enter your password to confirm account deletion.");
+      return;
+    }
+
+    try {
+      await deleteAccount({ password }).unwrap();
+      setPassword("");
+      onOpenChange(false);
+
+      if (onDeleteSuccess) {
+        onDeleteSuccess();
+      }
+
+      alert("Account deleted successfully");
+    } catch (error: any) {
+      console.error("Delete failed:", error);
+      alert(error?.data?.message || "Failed to delete account");
+    }
   };
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="destructive"
-          className="bg-red-600 hover:bg-red-700 rounded-xl px-8 py-6"
-        >
-          Delete Account
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-red-700 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            Are you absolutely sure?
-          </AlertDialogTitle>
-          <AlertDialogDescription>
+            Delete Account
+          </DialogTitle>
+          <DialogDescription className="text-red-600">
             This action cannot be undone. This will permanently delete your
-            account and remove your data from our servers.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <div className="space-y-4 py-4">
-          <Label htmlFor="deletePassword">
-            Enter your current password to confirm:
-          </Label>
-          <Input
-            id="deletePassword"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            className="rounded-xl"
-            disabled={isDeleting}
-          />
+            account and remove all your data from our servers.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="py-4 space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-red-800">
+              ⚠️ <strong>Warning:</strong> Once you delete your account, there
+              is no going back. Please be certain.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="delete-password" className="text-sm font-medium">
+              Enter your password to confirm:
+            </Label>
+            <Input
+              id="delete-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              className="rounded-xl py-6"
+            />
+          </div>
         </div>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setPassword("")}>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false);
+              setPassword("");
+            }}
+            className="rounded-xl"
+          >
             Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleSubmit}
+          </Button>
+          <Button
+            onClick={handleDeleteAccount}
             disabled={isDeleting || !password.trim()}
-            className="bg-red-600 hover:bg-red-700"
+            variant="destructive"
+            className="rounded-xl px-8"
           >
             {isDeleting ? (
               <>
@@ -85,9 +113,9 @@ export function DeleteAccountDialog({
             ) : (
               "Delete Account"
             )}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

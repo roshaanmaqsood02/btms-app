@@ -87,6 +87,44 @@ export const userApi = api.injectEndpoints({
       }),
     }),
 
+    // Update user (HRM / OPERATION_MANAGER)
+    updateUser: builder.mutation<
+      User, // The User type from your backend
+      { id: number | string; data: Partial<User> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/users/${id}`,
+        method: "PUT",
+        body: data,
+      }),
+      // This is crucial for updating the cache
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Users", id },
+        { type: "Users", id: "LIST" },
+      ],
+      // Add onQueryStarted to optimistically update the cache
+      async onQueryStarted({ id, data }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          userApi.util.updateQueryData("getUserById", id, (draft) => {
+            Object.assign(draft, data);
+          })
+        );
+
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
+      transformErrorResponse: (response: any) => ({
+        status: response.status,
+        message:
+          response.data?.message ||
+          response.data?.error ||
+          "Failed to update user",
+      }),
+    }),
+
     // Delete user (if you have an admin endpoint)
     deleteUser: builder.mutation<{ message: string }, number | string>({
       query: (id) => ({
@@ -114,5 +152,6 @@ export const {
   useGetUserByIdQuery,
   useLazyGetUserByIdQuery,
   useUpdateUserStatusMutation,
+  useUpdateUserMutation,
   useDeleteUserMutation,
 } = userApi;

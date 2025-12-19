@@ -2,6 +2,8 @@
 export interface User {
   id: number;
   uuid: string;
+  employeeId: string;
+  attendanceId: string;
   name: string;
   email: string;
   phone: string;
@@ -12,6 +14,7 @@ export interface User {
   department?: string;
   projects?: string[];
   positions?: string[];
+  profilePic?: string;
   is_active: boolean;
   createdAt?: string;
   updatedAt?: string;
