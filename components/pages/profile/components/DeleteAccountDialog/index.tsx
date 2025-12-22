@@ -16,9 +16,13 @@ import {
 import { AlertTriangle, Loader2 } from "lucide-react";
 
 interface DeleteAccountDialogProps {
+  userId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDeleteSuccess?: () => void;
+  isDeleting?: boolean;
+  userName?: string;
+  isSelfDelete?: boolean;
 }
 
 export function DeleteAccountDialog({

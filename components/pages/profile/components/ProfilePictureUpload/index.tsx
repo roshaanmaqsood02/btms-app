@@ -10,15 +10,21 @@ import { useAppSelector } from "@/redux/hook";
 import { selectCurrentUser } from "@/redux/slices/authSlice";
 
 interface ProfilePictureUploaderProps {
+  userId?: string;
   onUploadSuccess?: (profilePicUrl: string) => void;
   size?: "sm" | "md" | "lg";
+  canEdit?: boolean;
+  profileData?: any; // Add this prop to pass the user's profile data
 }
 
 export function ProfilePictureUploader({
+  userId,
   onUploadSuccess,
   size = "lg",
+  canEdit = false,
+  profileData, // Add this prop
 }: ProfilePictureUploaderProps) {
-  const user = useAppSelector(selectCurrentUser);
+  const currentUser = useAppSelector(selectCurrentUser);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -30,6 +36,12 @@ export function ProfilePictureUploader({
     md: "w-24 h-24",
     lg: "w-32 h-32",
   };
+
+  // Use profileData if available, otherwise fall back to currentUser
+  const displayUser = profileData || currentUser;
+
+  // Only allow editing if the user has permission AND they're editing their own profile
+  const canEditPicture = canEdit && currentUser?.id?.toString() === userId;
 
   const getInitials = (name?: string) =>
     name
@@ -110,25 +122,29 @@ export function ProfilePictureUploader({
           className={`${sizeClasses[size]} border-4 border-white shadow-lg`}
         >
           <AvatarImage
-            src={getProfilePicUrl(user?.profilePic)}
-            alt={user?.name || "Profile"}
+            // Use displayUser's profile picture
+            src={getProfilePicUrl(displayUser?.profilePic)}
+            alt={displayUser?.name || "Profile"}
             className="object-cover"
           />
           <AvatarFallback className="bg-gradient-to-r from-[rgb(96,57,187)] to-[rgb(120,80,200)] text-white text-lg font-semibold">
-            {getInitials(user?.name)}
+            {getInitials(displayUser?.name)}
           </AvatarFallback>
         </Avatar>
 
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          className="absolute bottom-0 right-0 rounded-full w-10 h-10 shadow-md"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isLoading}
-        >
-          <Camera className="h-5 w-5" />
-        </Button>
+        {/* Only show upload button if user can edit this picture */}
+        {canEditPicture && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute bottom-0 right-0 rounded-full w-10 h-10 shadow-md"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+          >
+            <Camera className="h-5 w-5" />
+          </Button>
+        )}
 
         <input
           ref={fileInputRef}

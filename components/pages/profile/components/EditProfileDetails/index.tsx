@@ -49,11 +49,13 @@ interface UserProfile {
 }
 
 interface EditProfileDialogProps {
+  userId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   profileData: UserProfile;
-  onUpdateSuccess?: (updatedData: any) => Promise<void>; // Changed to accept data
+  onUpdateSuccess?: (updatedData: any) => Promise<void>;
   isLoading?: boolean;
+  editingSection?: string | null; // Add this
 }
 
 export function EditProfileDialog({
@@ -62,6 +64,7 @@ export function EditProfileDialog({
   profileData,
   onUpdateSuccess,
   isLoading: externalLoading,
+  editingSection,
 }: EditProfileDialogProps) {
   const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation(); // Changed mutation
 
@@ -213,6 +216,22 @@ export function EditProfileDialog({
     }
   };
 
+  useEffect(() => {
+    if (open && editingSection) {
+      setTimeout(() => {
+        const sectionId = editingSection + "-section";
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+          element.classList.add("ring-2", "ring-[rgb(96,57,187)]");
+          setTimeout(() => {
+            element.classList.remove("ring-2", "ring-[rgb(96,57,187)]");
+          }, 2000);
+        }
+      }, 300);
+    }
+  }, [open, editingSection]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl border-0 shadow-2xl scrollbar-hide">
@@ -220,11 +239,16 @@ export function EditProfileDialog({
         <div className="bg-gradient-to-r from-[rgb(96,57,187)] to-[rgb(120,80,200)] text-white p-8 rounded-t-2xl">
           <DialogHeader>
             <DialogTitle className="text-3xl font-bold text-white">
-              Edit User Profile
+              {editingSection
+                ? `Edit ${
+                    editingSection.charAt(0).toUpperCase() +
+                    editingSection.slice(1)
+                  } Information`
+                : "Edit User Profile"}
             </DialogTitle>
             <DialogDescription className="text-white/90 text-lg">
-              {editData.id
-                ? `Updating user ID: ${editData.id}`
+              {profileData.id
+                ? `Updating user ID: ${profileData.id}`
                 : "Update user information"}
             </DialogDescription>
           </DialogHeader>

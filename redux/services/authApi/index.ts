@@ -35,8 +35,11 @@ export const authApi = createApi({
     }),
 
     // Get user profile
-    getProfile: builder.query<User, void>({
-      query: () => "/auth/profile",
+    getProfile: builder.query<User, { id: string } | void>({
+      query: (arg) => {
+        if (!arg) return "/auth/profile"; // fetch logged-in user
+        return `/users/${arg.id}`; // fetch user by ID
+      },
       providesTags: ["User"],
     }),
 
@@ -59,9 +62,11 @@ export const authApi = createApi({
         url: "/auth/profile/picture",
         method: "PUT",
         body: formData,
+        // The backend should handle userId from formData if provided
       }),
       invalidatesTags: ["User"],
     }),
+
     // Delete user account
     deleteAccount: builder.mutation<{ message: string }, DeleteAccountRequest>({
       query: (data) => ({

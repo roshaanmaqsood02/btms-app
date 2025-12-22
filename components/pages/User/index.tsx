@@ -1,6 +1,9 @@
 "use client";
 
-import { useGetUsersQuery } from "@/redux/services/userApi";
+import {
+  useCreateUserMutation,
+  useGetUsersQuery,
+} from "@/redux/services/userApi";
 import { useAppDispatch, useAppSelector } from "@/redux/hook";
 import {
   setPage,
@@ -14,36 +17,31 @@ import { TablePagination } from "@/components/common/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { selectCurrentUser } from "@/redux/slices/authSlice";
-import { useState, useCallback, useEffect } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Eye, MoreVertical, Edit2, Trash2 } from "lucide-react";
+import { Eye, MoreVertical, Edit2, Trash2, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import UserDetailSidebar from "@/components/common/ui/UserDetailSidebar";
 import {
   useUpdateUserMutation,
   useDeleteUserMutation,
 } from "@/redux/services/userApi";
+import CreateUserModal from "./CreateUser";
+import { useRouter } from "next/navigation";
+import DeleteUserDialog from "./DeleteUser";
 
 export default function User() {
+  const router = useRouter(); // Add router hook
   const dispatch = useAppDispatch();
 
   // Get query params with defaults
+  const [createUser, { isLoading: isCreatingUser }] = useCreateUserMutation();
+
   const queryParams = useAppSelector(selectUserQueryParams) || {
     page: 1,
     limit: 10,
@@ -65,17 +63,15 @@ export default function User() {
   const { data, isLoading, isFetching, error, refetch } =
     useGetUsersQuery(safeQueryParams);
   const currentUser = useAppSelector(selectCurrentUser);
-  const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation();
-  const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
+  const [deleteUser] = useDeleteUserMutation();
 
-  // Sidebar state
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [selectedUserData, setSelectedUserData] = useState<any>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<{
     id: string;
     name: string;
   } | null>(null);
+  // Add state for create user modal
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const totalItems = data?.total || 0;
   const totalPages = Math.ceil(totalItems / safeQueryParams.limit);
@@ -118,91 +114,102 @@ export default function User() {
     return `${baseUrl}/${user.profilePic.replace(/^\/+/, "")}?v=${Date.now()}`;
   };
 
-  // Handle view user details
-  const handleViewUser = useCallback((user: any) => {
-    setSelectedUserId(user.id);
-    setSelectedUserData(user);
-  }, []);
+  // Check if current user can navigate to profile
+  const canNavigateToProfile = () => {
+    return (
+      currentUser?.systemRole === "HRM" ||
+      currentUser?.systemRole === "OPERATION_MANAGER"
+    );
+  };
 
-  // Handle close sidebar
-  const handleCloseSidebar = useCallback(() => {
-    setSelectedUserId(null);
-    setSelectedUserData(null);
-  }, []);
+  // Check if current user is HRM
+  const isHRM = currentUser?.systemRole === "HRM";
 
-  // Handle edit user - show toast for now
-  const handleEditUser = useCallback(() => {
-    if (!selectedUserId || !selectedUserData) return;
-    toast.info("Edit functionality coming soon!", {
-      description: `Editing user: ${selectedUserData?.name}`,
-    });
-  }, [selectedUserId, selectedUserData]);
+  // Handle view user profile
+  const handleViewUserProfile = useCallback(
+    (user: any) => {
+      if (!canNavigateToProfile()) {
+        toast.info("Access Restricted", {
+          description: "Only HRM and Operation Managers can view user details",
+        });
+        return;
+      }
 
-  // Handle update user - implement when you have edit form
-  const handleUpdateUser = useCallback(
-    async (updatedData: any) => {
-      if (!selectedUserId) return;
+      // Navigate to user profile page
+      router.push(`/users/${user.id}`);
+    },
+    [currentUser, router]
+  );
+
+  // Handle add user
+  const handleAddUser = useCallback(() => {
+    if (!isHRM) {
+      toast.error("Permission Denied", {
+        description: "Only HRM can add new users",
+      });
+      return;
+    }
+
+    setIsCreateModalOpen(true);
+  }, [isHRM]);
+
+  // Handle create user
+  const handleCreateUser = useCallback(
+    async (data: any) => {
+      const { userData, profilePicture } = data;
 
       try {
-        await updateUser({
-          id: selectedUserId,
-          data: updatedData,
-        }).unwrap();
+        // Create the user
+        const result = await createUser(userData).unwrap();
 
-        toast.success("User updated successfully");
-        refetch();
-      } catch (error: any) {
-        toast.error("Failed to update user", {
-          description: error?.data?.message || "Please try again later",
+        toast.success("User created successfully!", {
+          description: `${result.name} has been added to the system`,
         });
+
+        setIsCreateModalOpen(false);
+        refetch(); // Refresh the user list
+
+        // Note: For profile picture upload, you'll need a separate endpoint
+        // You can implement this later if needed
+        if (profilePicture) {
+          toast.info("Profile picture upload", {
+            description: "Profile picture can be uploaded in user edit mode",
+          });
+        }
+      } catch (error: any) {
+        const errorMessage =
+          error?.data?.message || error?.message || "Failed to create user";
+
+        toast.error("Failed to create user", {
+          description: errorMessage,
+        });
+        throw error;
       }
     },
-    [selectedUserId, updateUser, refetch]
+    [createUser, refetch]
   );
 
   // Handle delete confirmation
-  const handleDeleteClick = useCallback((user: any) => {
-    setUserToDelete({ id: user.id, name: user.name });
-    setIsDeleteDialogOpen(true);
-  }, []);
-
-  // Handle actual delete
-  const handleDeleteUser = useCallback(async () => {
-    if (!userToDelete) return;
-
-    try {
-      await deleteUser(userToDelete.id).unwrap();
-
-      toast.success("User deleted successfully", {
-        description: `User "${userToDelete.name}" has been removed from the system`,
-      });
-
-      setIsDeleteDialogOpen(false);
-      setUserToDelete(null);
-      handleCloseSidebar();
-      refetch();
-    } catch (error: any) {
-      if (error?.status === 403) {
-        toast.error("Permission denied", {
-          description: error?.data?.message || "Only HRM can delete users",
+  const handleDeleteClick = useCallback(
+    (user: any) => {
+      // Only HRM can delete users
+      if (currentUser?.systemRole !== "HRM") {
+        toast.error("Permission Denied", {
+          description: "Only HRM can delete users",
         });
-      } else if (error?.status === 404) {
-        toast.error("User not found", {
-          description: "The user may have already been deleted",
-        });
-      } else {
-        toast.error("Failed to delete user", {
-          description: error?.data?.message || "Please try again later",
-        });
+        return;
       }
-    }
-  }, [userToDelete, deleteUser, refetch, handleCloseSidebar]);
 
-  // Handle sidebar delete
-  const handleSidebarDelete = useCallback(() => {
-    if (!selectedUserId || !selectedUserData) return;
-    handleDeleteClick(selectedUserData);
-  }, [selectedUserId, selectedUserData, handleDeleteClick]);
+      setUserToDelete({ id: user.id, name: user.name });
+      setIsDeleteDialogOpen(true);
+    },
+    [currentUser]
+  );
+
+  const handleDeleteSuccess = useCallback(() => {
+    setUserToDelete(null);
+    refetch(); // Refresh the user list
+  }, [refetch]);
 
   // Check if current user has admin privileges
   const hasAdminAccess =
@@ -213,7 +220,7 @@ export default function User() {
     <div className="relative min-h-screen">
       {/* Main Content */}
       <div className="p-6 space-y-6">
-        {/* Search Bar */}
+        {/* Header with Search and Add Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SearchBar
             placeholder="Search users by name, email, or department..."
@@ -221,6 +228,17 @@ export default function User() {
             onChange={(value) => dispatch(setSearch(value))}
             className="max-w-lg"
           />
+
+          {/* Add User Button - Only show for HRM */}
+          {isHRM && (
+            <Button
+              onClick={handleAddUser}
+              className="bg-[#6039BB] hover:bg-[#5029AA] text-white rounded-md flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add New User
+            </Button>
+          )}
         </div>
 
         {/* Error State */}
@@ -255,8 +273,14 @@ export default function User() {
             {data?.data?.map((user) => (
               <TableRow
                 key={user.id}
-                className="hover:bg-gray-50/50 cursor-pointer transition-colors"
-                onClick={() => handleViewUser(user)}
+                className={`${
+                  canNavigateToProfile()
+                    ? "hover:bg-gray-50/50 cursor-pointer"
+                    : ""
+                } transition-colors`}
+                onClick={() =>
+                  canNavigateToProfile() && handleViewUserProfile(user)
+                }
               >
                 {/* EMP ID */}
                 <TableCell>
@@ -313,13 +337,8 @@ export default function User() {
 
                 {/* Email Column */}
                 <TableCell>
-                  <div className="flex flex-col">
+                  <div className="flex">
                     <span className="text-gray-900">{user.email}</span>
-                    {user.phone && (
-                      <span className="text-xs text-gray-500 mt-1">
-                        {user.phone}
-                      </span>
-                    )}
                   </div>
                 </TableCell>
 
@@ -391,53 +410,47 @@ export default function User() {
                   </div>
                 </TableCell>
 
-                {/* Actions Column */}
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={() => handleViewUser(user)}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-
-                      {/* Show edit only for HRM and Operation Manager */}
-                      {hasAdminAccess && (
+                {/* Actions Column - Only show for HRM and Operation Managers */}
+                {hasAdminAccess && (
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEditUser();
+                            handleViewUserProfile(user);
                           }}
                         >
-                          <Edit2 className="h-4 w-4 mr-2" />
-                          Edit User
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Profile
                         </DropdownMenuItem>
-                      )}
 
-                      {/* Show delete only for HRM */}
-                      {currentUser?.systemRole === "HRM" && (
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(user);
-                          }}
-                          className="text-red-600 focus:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete User
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                        {/* Show delete only for HRM */}
+                        {currentUser?.systemRole === "HRM" && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(user);
+                            }}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete User
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </AppDataTable>
@@ -457,46 +470,24 @@ export default function User() {
         )}
       </div>
 
-      {/* User Detail Sidebar */}
-      <UserDetailSidebar
-        selectedUserId={selectedUserId}
-        selectedUserData={selectedUserData}
-        onClose={handleCloseSidebar}
-        onEdit={handleEditUser}
-        onDelete={handleSidebarDelete}
-        isLoading={isFetching}
-      />
+      {/* Create User Modal - Only show for HRM */}
+      {isHRM && isCreateModalOpen && (
+        <CreateUserModal
+          open={isCreateModalOpen}
+          onOpenChange={setIsCreateModalOpen}
+          onCreateUser={handleCreateUser}
+          isLoading={isCreatingUser}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog
+      <DeleteUserDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete User Account</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-gray-900">
-                {userToDelete?.name}
-              </span>
-              ? This action cannot be undone. All user data, including
-              assignments and history, will be permanently removed from the
-              system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteUser}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {isDeleting ? "Deleting..." : "Delete User"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        userToDelete={userToDelete}
+        onDeleteSuccess={handleDeleteSuccess}
+        currentUserRole={currentUser?.systemRole}
+      />
     </div>
   );
 }

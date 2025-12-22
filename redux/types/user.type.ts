@@ -12,6 +12,10 @@ export interface User {
   country: string;
   city: string;
   gender?: string;
+  dateOfBirth: string;
+  maritalStatus: string;
+  bloodGroup: string;
+  cnic: string;
   postalCode?: string;
   department?: string;
   projects?: string[];
