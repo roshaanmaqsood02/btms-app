@@ -15,6 +15,7 @@ interface AppDataTableProps {
   columns: string[];
   isLoading: boolean;
   children: ReactNode;
+  emptyState?: ReactNode;
   noDataText?: string;
 }
 

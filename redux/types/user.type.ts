@@ -1,3 +1,5 @@
+import { SystemRole } from "@/types";
+
 // User management related types
 export interface User {
   id: number;
@@ -15,6 +17,7 @@ export interface User {
   projects?: string[];
   positions?: string[];
   profilePic?: string;
+  systemRole: SystemRole;
   is_active: boolean;
   createdAt?: string;
   updatedAt?: string;

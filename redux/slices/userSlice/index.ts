@@ -1,20 +1,31 @@
-import { User } from "@/redux/types/user.type";
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { User, GetUsersParams } from "@/redux/types/user.type";
 
-interface UserFilters {
+/* -------------------------------------------------------------------------- */
+/*                                   TYPES                                    */
+/* -------------------------------------------------------------------------- */
+
+export type SortOrder = "asc" | "desc";
+export type UserSortField = "createdAt" | "name" | "email";
+
+export interface UserFilters {
   search: string;
-  sortBy: string;
-  sortOrder: "asc" | "desc";
+  sortBy: UserSortField;
+  sortOrder: SortOrder;
   isActive?: boolean;
 }
 
-interface UserState {
+export interface UserState {
   page: number;
   limit: number;
   filters: UserFilters;
   selectedUser: User | null;
   error: string | null;
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                INITIAL STATE                               */
+/* -------------------------------------------------------------------------- */
 
 const initialState: UserState = {
   page: 1,
@@ -29,18 +40,23 @@ const initialState: UserState = {
   error: null,
 };
 
+/* -------------------------------------------------------------------------- */
+/*                                   SLICE                                    */
+/* -------------------------------------------------------------------------- */
+
 const userSlice = createSlice({
   name: "users",
   initialState,
   reducers: {
-    // Pagination actions
+    /* ------------------------------- Pagination ------------------------------ */
+
     setPage(state, action: PayloadAction<number>) {
       state.page = action.payload;
     },
 
     setLimit(state, action: PayloadAction<number>) {
       state.limit = action.payload;
-      state.page = 1; // Reset to first page when changing limit
+      state.page = 1;
     },
 
     nextPage(state) {
@@ -48,28 +64,30 @@ const userSlice = createSlice({
     },
 
     prevPage(state) {
-      if (state.page > 1) {
-        state.page -= 1;
-      }
+      if (state.page > 1) state.page -= 1;
     },
 
-    // Filter actions
+    /* --------------------------------- Filters -------------------------------- */
+
     setSearch(state, action: PayloadAction<string>) {
       state.filters.search = action.payload;
-      state.page = 1; // Reset to first page when searching
+      state.page = 1;
     },
 
-    setSortBy(state, action: PayloadAction<string>) {
+    setSortBy(state, action: PayloadAction<UserSortField>) {
       state.filters.sortBy = action.payload;
+      state.page = 1;
     },
 
-    setSortOrder(state, action: PayloadAction<"asc" | "desc">) {
+    setSortOrder(state, action: PayloadAction<SortOrder>) {
       state.filters.sortOrder = action.payload;
+      state.page = 1;
     },
 
     toggleSortOrder(state) {
       state.filters.sortOrder =
         state.filters.sortOrder === "asc" ? "desc" : "asc";
+      state.page = 1;
     },
 
     setIsActiveFilter(state, action: PayloadAction<boolean | undefined>) {
@@ -87,7 +105,8 @@ const userSlice = createSlice({
       state.page = 1;
     },
 
-    // Selected user actions
+    /* ------------------------------ Selected User ----------------------------- */
+
     setSelectedUser(state, action: PayloadAction<User | null>) {
       state.selectedUser = action.payload;
     },
@@ -96,7 +115,8 @@ const userSlice = createSlice({
       state.selectedUser = null;
     },
 
-    // Error handling
+    /* ---------------------------------- Errors -------------------------------- */
+
     setError(state, action: PayloadAction<string | null>) {
       state.error = action.payload;
     },
@@ -105,12 +125,19 @@ const userSlice = createSlice({
       state.error = null;
     },
 
-    // Reset entire state
+    /* ---------------------------------- Reset --------------------------------- */
+
     resetUsersState() {
       return initialState;
     },
   },
 });
+
+/* -------------------------------------------------------------------------- */
+/*                                   EXPORTS                                  */
+/* -------------------------------------------------------------------------- */
+
+export default userSlice.reducer;
 
 export const {
   setPage,
@@ -131,24 +158,36 @@ export const {
   resetUsersState,
 } = userSlice.actions;
 
-export default userSlice.reducer;
+/* -------------------------------------------------------------------------- */
+/*                                  SELECTORS                                 */
+/* -------------------------------------------------------------------------- */
 
-// Selectors
 export const selectUserPage = (state: { users: UserState }) => state.users.page;
+
 export const selectUserLimit = (state: { users: UserState }) =>
   state.users.limit;
+
 export const selectUserFilters = (state: { users: UserState }) =>
   state.users.filters;
+
 export const selectUserSearch = (state: { users: UserState }) =>
   state.users.filters.search;
+
 export const selectSelectedUser = (state: { users: UserState }) =>
   state.users.selectedUser;
+
 export const selectUserError = (state: { users: UserState }) =>
   state.users.error;
 
-// Combined selector for query params
-export const selectUserQueryParams = (state: { users: UserState }) => ({
-  page: state.users.page,
-  limit: state.users.limit,
-  ...state.users.filters,
-});
+/* --------------------- Combined selector (RTK Query) ---------------------- */
+
+export const selectUserQueryParams = createSelector(
+  (state: { users: UserState }) => state.users.page,
+  (state: { users: UserState }) => state.users.limit,
+  (state: { users: UserState }) => state.users.filters,
+  (page, limit, filters) => ({
+    page,
+    limit,
+    ...filters,
+  })
+);

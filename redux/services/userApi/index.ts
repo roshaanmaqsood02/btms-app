@@ -3,13 +3,12 @@ import type {
   User,
   UsersResponse,
   GetUsersParams,
-  UserByIdResponse,
-  ErrorResponse,
-} from "../../types/user.type";
+} from "@/redux/types/user.type";
+import { selectUserQueryParams } from "@/redux/slices/userSlice";
 
 export const userApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // Get paginated list of users
+    /* --------------------------- GET USERS (Paginated) -------------------------- */
     getUsers: builder.query<UsersResponse, GetUsersParams>({
       query: ({
         page = 1,
@@ -20,7 +19,6 @@ export const userApi = api.injectEndpoints({
         isActive,
       }) => {
         const params: Record<string, any> = { page, limit };
-
         if (search) params.search = search;
         if (sortBy) params.sortBy = sortBy;
         if (sortOrder) params.sortOrder = sortOrder;
@@ -48,12 +46,9 @@ export const userApi = api.injectEndpoints({
       }),
     }),
 
-    // Get single user by ID
+    /* --------------------------- GET USER BY ID --------------------------- */
     getUserById: builder.query<User, number | string>({
-      query: (id) => ({
-        url: `/users/${id}`,
-        method: "GET",
-      }),
+      query: (id) => ({ url: `/users/${id}`, method: "GET" }),
       providesTags: (result, error, id) => [{ type: "Users", id }],
       transformErrorResponse: (response: any) => ({
         status: response.status,
@@ -64,7 +59,7 @@ export const userApi = api.injectEndpoints({
       }),
     }),
 
-    // Update user status (if you have an admin endpoint)
+    /* --------------------------- UPDATE USER STATUS ------------------------ */
     updateUserStatus: builder.mutation<
       User,
       { id: number | string; isActive: boolean }
@@ -87,33 +82,51 @@ export const userApi = api.injectEndpoints({
       }),
     }),
 
-    // Update user (HRM / OPERATION_MANAGER)
+    /* --------------------------- UPDATE USER ------------------------ */
     updateUser: builder.mutation<
-      User, // The User type from your backend
+      User,
       { id: number | string; data: Partial<User> }
     >({
       query: ({ id, data }) => ({
         url: `/users/${id}`,
         method: "PUT",
         body: data,
+        headers: { "Content-Type": "application/json" },
       }),
-      // This is crucial for updating the cache
       invalidatesTags: (result, error, { id }) => [
         { type: "Users", id },
         { type: "Users", id: "LIST" },
       ],
-      // Add onQueryStarted to optimistically update the cache
-      async onQueryStarted({ id, data }, { dispatch, queryFulfilled }) {
-        const patchResult = dispatch(
+      async onQueryStarted(
+        { id, data },
+        { dispatch, getState, queryFulfilled }
+      ) {
+        const state = getState() as any;
+        const queryParams: GetUsersParams = selectUserQueryParams(state);
+
+        // Optimistic update getUserById
+        const getUserByIdPatch = dispatch(
           userApi.util.updateQueryData("getUserById", id, (draft) => {
-            Object.assign(draft, data);
+            if (draft) Object.assign(draft, data);
+          })
+        );
+
+        // Optimistic update getUsers
+        const getUsersPatch = dispatch(
+          userApi.util.updateQueryData("getUsers", queryParams, (draft) => {
+            if (draft?.data) {
+              const index = draft.data.findIndex((u) => u.id === id);
+              if (index !== -1)
+                draft.data[index] = { ...draft.data[index], ...data };
+            }
           })
         );
 
         try {
           await queryFulfilled;
         } catch {
-          patchResult.undo();
+          getUserByIdPatch.undo();
+          getUsersPatch.undo();
         }
       },
       transformErrorResponse: (response: any) => ({
@@ -125,16 +138,32 @@ export const userApi = api.injectEndpoints({
       }),
     }),
 
-    // Delete user (if you have an admin endpoint)
+    /* --------------------------- DELETE USER ------------------------ */
     deleteUser: builder.mutation<{ message: string }, number | string>({
-      query: (id) => ({
-        url: `/users/${id}`,
-        method: "DELETE",
-      }),
+      query: (id) => ({ url: `/users/${id}`, method: "DELETE" }),
       invalidatesTags: (result, error, id) => [
         { type: "Users", id },
         { type: "Users", id: "LIST" },
       ],
+      async onQueryStarted(id, { dispatch, getState, queryFulfilled }) {
+        const state = getState() as any;
+        const queryParams: GetUsersParams = selectUserQueryParams(state);
+
+        const patchResult = dispatch(
+          userApi.util.updateQueryData("getUsers", queryParams, (draft) => {
+            if (draft?.data) {
+              draft.data = draft.data.filter((u) => u.id !== id);
+              draft.total = draft.total - 1;
+            }
+          })
+        );
+
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
       transformErrorResponse: (response: any) => ({
         status: response.status,
         message:

@@ -175,7 +175,7 @@ export default function Login() {
           })
         );
 
-        router.push("/profile");
+        router.push("/dashboard");
       } else {
         // Validate required fields for registration
         if (!formData.name.trim()) {
@@ -216,7 +216,7 @@ export default function Login() {
           }
         }
 
-        router.push("/profile");
+        router.push("/dashboard");
       }
     } catch (error: any) {
       const errorMessage =

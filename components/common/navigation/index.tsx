@@ -40,6 +40,8 @@ export function Navigation({ onLogout }: NavigationProps) {
     skip: !token,
   });
 
+  const userId = useAppSelector((state) => state.auth.user?.id);
+
   useEffect(() => {
     if (data) dispatch(setUser(data));
     if (error) {
@@ -92,8 +94,8 @@ export function Navigation({ onLogout }: NavigationProps) {
           {token && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
+                <button
+                  type="button"
                   className="flex items-center gap-3 px-2 rounded-full hover:bg-gray-100"
                 >
                   <Avatar className="h-9 w-9">
@@ -117,12 +119,12 @@ export function Navigation({ onLogout }: NavigationProps) {
                       {user?.systemRole}
                     </span>
                   </div>
-                </Button>
+                </button>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
-                  onClick={() => router.push("/profile")}
+                  onClick={() => router.push(`/users/${userId}`)}
                   className="cursor-pointer"
                 >
                   <UserCircle className="mr-2 h-4 w-4" />
