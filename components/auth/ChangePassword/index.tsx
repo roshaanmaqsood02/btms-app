@@ -5,15 +5,8 @@ import { useUpdateProfileMutation } from "@/redux/services/authApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Loader2, Lock } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 interface ChangePasswordDialogProps {
   open: boolean;

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,18 +33,15 @@ export function Navigation({ onLogout }: NavigationProps) {
   const user = useAppSelector(selectCurrentUser);
 
   const [pageTitle, setPageTitle] = useState<string>("Home");
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState<boolean>(false);
 
-  const { data, error, refetch } = useGetProfileQuery(undefined, {
-    skip: !token,
-  });
+  const { data, error, refetch } = useGetProfileQuery();
 
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   useEffect(() => {
     if (data) dispatch(setUser(data));
     if (error) {
-      // Optional: handle error or logout
     }
   }, [data, error, dispatch]);
 

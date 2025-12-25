@@ -2,4 +2,9 @@ export type SystemRole =
   | "EMPLOYEE"
   | "PROJECT_MANAGER"
   | "OPERATION_MANAGER"
-  | "HRM";
+  | "HRM"
+  | "ADMIN"
+  | "CEO"
+  | "CTO"
+  | "STAFF"
+  | "INTERNS";

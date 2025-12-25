@@ -1,6 +1,5 @@
 "use client";
 
-import { TrendingUp } from "lucide-react";
 import {
   Label,
   PolarGrid,
@@ -12,7 +11,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -22,7 +20,7 @@ import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 export const description = "A radial chart with text";
 
 const chartData = [
-  { browser: "safari", visitors: 42, fill: "var(--color-safari)" },
+  { browser: "safari", visitors: 4, fill: "var(--color-safari)" },
 ];
 
 const chartConfig = {
@@ -31,26 +29,26 @@ const chartConfig = {
   },
   safari: {
     label: "Safari",
-    color: "#6039BB",
+    color: "#00898f",
   },
 } satisfies ChartConfig;
 
-export function ChartRadialText() {
+export function InterneeChartRadialText() {
   return (
     <Card className="flex flex-col">
       <CardHeader className="items-center pb-0">
-        <CardTitle>All Employees</CardTitle>
+        <CardTitle>All Interns (4)</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square max-h-[250px]"
+          className="mx-auto aspect-square max-h-[180px]"
         >
           <RadialBarChart
             data={chartData}
-            startAngle={60}
-            endAngle={300}
-            innerRadius={80}
+            startAngle={0}
+            endAngle={360}
+            innerRadius={68}
             outerRadius={180}
           >
             <PolarGrid
@@ -58,7 +56,7 @@ export function ChartRadialText() {
               radialLines={false}
               stroke="none"
               className="first:fill-muted last:fill-background"
-              polarRadius={[86, 74]}
+              polarRadius={[90, 74]}
             />
             <RadialBar dataKey="visitors" background cornerRadius={0} />
             <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
@@ -97,12 +95,12 @@ export function ChartRadialText() {
       </CardContent>
       <CardFooter className="gap-2 text-sm justify-between">
         <div className="flex items-center gap-2 leading-none text-lg font-medium">
-          <span className="p-2.5 rounded-sm bg-[#6039BB]"></span>
-          Male
+          <span className="p-2.5 rounded-sm bg-[#00898f]"></span>
+          Male (3)
         </div>
         <div className="flex items-center gap-2 leading-none text-lg font-medium">
-          <span className="p-2.5 rounded-sm bg-[#19C9D1]"></span>
-          Female
+          <span className="p-2.5 rounded-sm bg-yellow-600"></span>
+          Female (1)
         </div>
       </CardFooter>
     </Card>

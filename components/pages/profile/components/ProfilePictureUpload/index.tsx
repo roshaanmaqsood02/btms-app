@@ -1,20 +1,20 @@
-// components/ProfilePictureUploader.tsx
 "use client";
 
 import { useState, useRef, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, Camera, X, Check } from "lucide-react";
-import { useProfilePicture } from "@/hooks/useProfilePicture";
 import { useAppSelector } from "@/redux/hook";
 import { selectCurrentUser } from "@/redux/slices/authSlice";
+import { useUpdateProfilePictureMutation } from "@/redux/services/authApi";
+import { toast } from "sonner";
 
 interface ProfilePictureUploaderProps {
-  userId?: string;
+  userId: string;
   onUploadSuccess?: (profilePicUrl: string) => void;
   size?: "sm" | "md" | "lg";
   canEdit?: boolean;
-  profileData?: any; // Add this prop to pass the user's profile data
+  profileData?: any;
 }
 
 export function ProfilePictureUploader({
@@ -22,14 +22,16 @@ export function ProfilePictureUploader({
   onUploadSuccess,
   size = "lg",
   canEdit = false,
-  profileData, // Add this prop
+  profileData,
 }: ProfilePictureUploaderProps) {
   const currentUser = useAppSelector(selectCurrentUser);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const { uploadProfilePicture, isLoading, error, clearError } =
-    useProfilePicture();
+
+  // Use authApi mutation instead of userApi
+  const [updateProfilePicture, { isLoading: isUploading }] =
+    useUpdateProfilePictureMutation();
 
   const sizeClasses = {
     sm: "w-16 h-16",
@@ -37,11 +39,25 @@ export function ProfilePictureUploader({
     lg: "w-32 h-32",
   };
 
-  // Use profileData if available, otherwise fall back to currentUser
-  const displayUser = profileData || currentUser;
+  // Determine if user can edit this picture
+  const canEditPicture = () => {
+    if (!currentUser) return false;
 
-  // Only allow editing if the user has permission AND they're editing their own profile
-  const canEditPicture = canEdit && currentUser?.id?.toString() === userId;
+    // 1. User is editing their own profile (EVERYONE can do this)
+    if (currentUser.id?.toString() === userId) return true;
+
+    // 2. User is HRM/OM/PM editing someone else's profile
+    if (canEdit) {
+      return (
+        currentUser.systemRole === "HRM" ||
+        currentUser.systemRole === "OPERATION_MANAGER" ||
+        currentUser.systemRole === "PROJECT_MANAGER" ||
+        currentUser.systemRole === "ADMIN"
+      );
+    }
+
+    return false;
+  };
 
   const getInitials = (name?: string) =>
     name
@@ -67,20 +83,23 @@ export function ProfilePictureUploader({
   };
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    clearError();
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validate file type
     const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      alert("Please select a valid image file (JPEG, PNG, GIF, WebP)");
+      toast.error("Invalid file type", {
+        description: "Please select a valid image file (JPEG, PNG, GIF, WebP)",
+      });
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image size must be less than 5MB");
+      toast.error("File too large", {
+        description: "Image size must be less than 5MB",
+      });
       return;
     }
 
@@ -89,20 +108,57 @@ export function ProfilePictureUploader({
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !userId) return;
 
-    const result = await uploadProfilePicture(selectedFile);
+    try {
+      const formData = new FormData();
+      formData.append("profilePic", selectedFile);
 
-    if (result.success) {
+      // If admin is updating someone else's picture, add userId
+      const isSelfUpdate = currentUser?.id?.toString() === userId;
+      if (!isSelfUpdate && canEdit) {
+        formData.append("userId", userId);
+      }
+
+      console.log("FormData entries:");
+      for (let pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+      }
+
+      const result = await updateProfilePicture(formData).unwrap();
+
+      console.log("Upload successful:", result);
+
+      // Show appropriate success message
+      toast.success("Profile picture updated successfully", {
+        description: isSelfUpdate
+          ? "Your profile picture has been updated"
+          : `Picture for ${profileData?.name} has been updated`,
+      });
+
+      // Clear preview and file
       setPreviewUrl(null);
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
 
-      if (onUploadSuccess && result.data?.profilePic) {
-        onUploadSuccess(result.data.profilePic);
+      // Call success callback with new profile picture URL
+      if (onUploadSuccess && result.user?.profilePic) {
+        onUploadSuccess(result.user.profilePic);
       }
+    } catch (error: any) {
+      console.error("Upload error:", error);
+
+      // Extract error message
+      const errorMessage =
+        error?.data?.message ||
+        error?.message ||
+        "Failed to upload profile picture";
+
+      toast.error("Upload failed", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -112,8 +168,10 @@ export function ProfilePictureUploader({
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    clearError();
   };
+
+  // Check if this is self-update
+  const isSelfUpdate = currentUser?.id?.toString() === userId;
 
   return (
     <div className="flex flex-col items-center space-y-4">
@@ -122,28 +180,34 @@ export function ProfilePictureUploader({
           className={`${sizeClasses[size]} border-4 border-white shadow-lg`}
         >
           <AvatarImage
-            // Use displayUser's profile picture
-            src={getProfilePicUrl(displayUser?.profilePic)}
-            alt={displayUser?.name || "Profile"}
+            src={getProfilePicUrl(profileData?.profilePic)}
+            alt={profileData?.name || "Profile"}
             className="object-cover"
           />
           <AvatarFallback className="bg-gradient-to-r from-[rgb(96,57,187)] to-[rgb(120,80,200)] text-white text-lg font-semibold">
-            {getInitials(displayUser?.name)}
+            {getInitials(profileData?.name)}
           </AvatarFallback>
         </Avatar>
 
-        {/* Only show upload button if user can edit this picture */}
-        {canEditPicture && (
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="absolute bottom-0 right-0 rounded-full w-10 h-10 shadow-md"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
-          >
-            <Camera className="h-5 w-5" />
-          </Button>
+        {/* Show upload button if user has permission */}
+        {canEditPicture() && (
+          <div className="absolute bottom-0 right-0">
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="rounded-full w-10 h-10 shadow-md hover:bg-gray-200 transition-colors bg-white"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              title={
+                isSelfUpdate
+                  ? "Change your profile picture"
+                  : "Change user's profile picture"
+              }
+            >
+              <Camera className="h-5 w-5" />
+            </Button>
+          </div>
         )}
 
         <input
@@ -155,7 +219,8 @@ export function ProfilePictureUploader({
         />
       </div>
 
-      {previewUrl && (
+      {/* Upload preview and controls */}
+      {previewUrl && canEditPicture() && (
         <div className="mt-4 p-4 border rounded-lg bg-gray-50 w-full max-w-xs">
           <div className="flex items-center space-x-4 mb-3">
             <Avatar className="w-12 h-12">
@@ -167,7 +232,12 @@ export function ProfilePictureUploader({
                 {selectedFile?.name}
               </p>
               <p className="text-xs text-gray-500">
-                {(selectedFile?.size || 0) / 1024} KB
+                {Math.round((selectedFile?.size || 0) / 1024)} KB
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {isSelfUpdate
+                  ? "Updating your picture"
+                  : "Updating user's picture"}
               </p>
             </div>
           </div>
@@ -176,36 +246,33 @@ export function ProfilePictureUploader({
             <Button
               type="button"
               onClick={handleUpload}
-              disabled={isLoading}
-              className="flex-1 bg-[#6039BB]"
+              disabled={isUploading}
+              className="flex-1 bg-[#6039BB] hover:bg-[#4a2c9c]"
               size="sm"
             >
-              {isLoading ? (
+              {isUploading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Uploading...
                 </>
               ) : (
-                <>Save</>
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  {isSelfUpdate ? "Update My Picture" : "Update Picture"}
+                </>
               )}
             </Button>
             <Button
               type="button"
               onClick={handleCancel}
-              className="text-gray-700"
               variant="outline"
               size="sm"
-              disabled={isLoading}
+              disabled={isUploading}
             >
+              <X className="h-4 w-4 mr-1" />
               Cancel
             </Button>
           </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg max-w-xs">
-          {typeof error === "string" ? error : "Failed to upload image"}
         </div>
       )}
     </div>

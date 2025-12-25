@@ -85,7 +85,10 @@ export const authApi = createApi({
 
     // Logout (client-side only)
     logout: builder.mutation<void, void>({
-      queryFn: () => ({ data: undefined }),
+      query: () => ({
+        url: "/auth/logout",
+        method: "POST",
+      }),
       invalidatesTags: ["User", "Auth"],
     }),
   }),

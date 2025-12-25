@@ -20,23 +20,19 @@ import { selectCurrentUser } from "@/redux/slices/authSlice";
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Eye, MoreVertical, Edit2, Trash2, Plus } from "lucide-react";
+import { Eye, MoreVertical, Trash2, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  useUpdateUserMutation,
-  useDeleteUserMutation,
-} from "@/redux/services/userApi";
 import CreateUserModal from "./CreateUser";
 import { useRouter } from "next/navigation";
 import DeleteUserDialog from "./DeleteUser";
 
 export default function User() {
-  const router = useRouter(); // Add router hook
+  const router = useRouter();
   const dispatch = useAppDispatch();
 
   // Get query params with defaults
@@ -63,15 +59,14 @@ export default function User() {
   const { data, isLoading, isFetching, error, refetch } =
     useGetUsersQuery(safeQueryParams);
   const currentUser = useAppSelector(selectCurrentUser);
-  const [deleteUser] = useDeleteUserMutation();
-
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [userToDelete, setUserToDelete] = useState<{
     id: string;
     name: string;
+    systemRole?: string;
   } | null>(null);
   // Add state for create user modal
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
   const totalItems = data?.total || 0;
   const totalPages = Math.ceil(totalItems / safeQueryParams.limit);
@@ -118,19 +113,57 @@ export default function User() {
   const canNavigateToProfile = () => {
     return (
       currentUser?.systemRole === "HRM" ||
-      currentUser?.systemRole === "OPERATION_MANAGER"
+      currentUser?.systemRole === "OPERATION_MANAGER" ||
+      currentUser?.systemRole === "PROJECT_MANAGER" ||
+      currentUser?.systemRole === "ADMIN"
     );
   };
 
-  // Check if current user is HRM
-  const isHRM = currentUser?.systemRole === "HRM";
+  // Check if current user can create users
+  const canCreateUsers = () => {
+    return (
+      currentUser?.systemRole === "HRM" || currentUser?.systemRole === "ADMIN"
+    );
+  };
+
+  // Check if current user can delete a specific user
+  const canDeleteSpecificUser = (targetUser: any) => {
+    if (!currentUser || !targetUser) return false;
+
+    // Cannot delete yourself
+    if (currentUser.id?.toString() === targetUser.id?.toString()) return false;
+
+    // ADMIN can delete anyone
+    if (currentUser.systemRole === "ADMIN") return true;
+
+    // HRM can delete most users but with restrictions
+    if (currentUser.systemRole === "HRM") {
+      // HRM cannot delete ADMIN, other HRM, or Operation Managers
+      return !(
+        targetUser.systemRole === "ADMIN" ||
+        targetUser.systemRole === "HRM" ||
+        targetUser.systemRole === "OPERATION_MANAGER"
+      );
+    }
+
+    return false;
+  };
+
+  // Check if current user can view actions menu
+  const canViewActionsMenu = () => {
+    return (
+      currentUser?.systemRole === "HRM" ||
+      currentUser?.systemRole === "OPERATION_MANAGER" ||
+      currentUser?.systemRole === "ADMIN"
+    );
+  };
 
   // Handle view user profile
   const handleViewUserProfile = useCallback(
     (user: any) => {
       if (!canNavigateToProfile()) {
         toast.info("Access Restricted", {
-          description: "Only HRM and Operation Managers can view user details",
+          description: "Only authorized personnel can view user details",
         });
         return;
       }
@@ -143,15 +176,15 @@ export default function User() {
 
   // Handle add user
   const handleAddUser = useCallback(() => {
-    if (!isHRM) {
+    if (!canCreateUsers()) {
       toast.error("Permission Denied", {
-        description: "Only HRM can add new users",
+        description: "Only HRM and ADMIN can add new users",
       });
       return;
     }
 
     setIsCreateModalOpen(true);
-  }, [isHRM]);
+  }, [canCreateUsers]);
 
   // Handle create user
   const handleCreateUser = useCallback(
@@ -159,6 +192,25 @@ export default function User() {
       const { userData, profilePicture } = data;
 
       try {
+        // ADMIN can create any role, HRM has restrictions
+        if (currentUser?.systemRole === "HRM") {
+          const hrAllowedRoles = [
+            "EMPLOYEE",
+            "PROJECT_MANAGER",
+            "OPERATION_MANAGER",
+          ];
+          if (
+            userData.systemRole &&
+            !hrAllowedRoles.includes(userData.systemRole)
+          ) {
+            toast.error("Permission Denied", {
+              description:
+                "HRM can only create EMPLOYEE, PROJECT_MANAGER, or OPERATION_MANAGER roles",
+            });
+            return;
+          }
+        }
+
         // Create the user
         const result = await createUser(userData).unwrap();
 
@@ -170,7 +222,6 @@ export default function User() {
         refetch(); // Refresh the user list
 
         // Note: For profile picture upload, you'll need a separate endpoint
-        // You can implement this later if needed
         if (profilePicture) {
           toast.info("Profile picture upload", {
             description: "Profile picture can be uploaded in user edit mode",
@@ -186,35 +237,49 @@ export default function User() {
         throw error;
       }
     },
-    [createUser, refetch]
+    [createUser, refetch, currentUser]
   );
 
   // Handle delete confirmation
   const handleDeleteClick = useCallback(
     (user: any) => {
-      // Only HRM can delete users
-      if (currentUser?.systemRole !== "HRM") {
+      // Check if user can delete this specific user
+      if (!canDeleteSpecificUser(user)) {
+        let errorMessage = "You do not have permission to delete this user";
+
+        if (
+          currentUser?.systemRole === "HRM" &&
+          (user.systemRole === "ADMIN" ||
+            user.systemRole === "HRM" ||
+            user.systemRole === "OPERATION_MANAGER")
+        ) {
+          errorMessage =
+            "HRM cannot delete ADMIN, other HRM, or Operation Managers";
+        } else if (currentUser?.id?.toString() === user.id?.toString()) {
+          errorMessage =
+            "You cannot delete your own account from here. Use profile settings.";
+        }
+
         toast.error("Permission Denied", {
-          description: "Only HRM can delete users",
+          description: errorMessage,
         });
         return;
       }
 
-      setUserToDelete({ id: user.id, name: user.name });
+      setUserToDelete({
+        id: user.id,
+        name: user.name,
+        systemRole: user.systemRole,
+      });
       setIsDeleteDialogOpen(true);
     },
-    [currentUser]
+    [currentUser, canDeleteSpecificUser]
   );
 
   const handleDeleteSuccess = useCallback(() => {
     setUserToDelete(null);
-    refetch(); // Refresh the user list
+    refetch();
   }, [refetch]);
-
-  // Check if current user has admin privileges
-  const hasAdminAccess =
-    currentUser?.systemRole === "HRM" ||
-    currentUser?.systemRole === "OPERATION_MANAGER";
 
   return (
     <div className="relative min-h-screen">
@@ -229,8 +294,8 @@ export default function User() {
             className="max-w-lg"
           />
 
-          {/* Add User Button - Only show for HRM */}
-          {isHRM && (
+          {/* Add User Button - Only show for HRM and ADMIN */}
+          {canCreateUsers() && (
             <Button
               onClick={handleAddUser}
               className="bg-[#6039BB] hover:bg-[#5029AA] text-white rounded-md flex items-center gap-2"
@@ -326,7 +391,17 @@ export default function User() {
                       {user.systemRole && (
                         <Badge
                           variant="outline"
-                          className="text-xs font-normal mt-1 w-fit bg-gray-50"
+                          className={`text-xs font-normal mt-1 w-fit ${
+                            user.systemRole === "ADMIN"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : user.systemRole === "HRM"
+                              ? "bg-purple-50 text-purple-700 border-purple-200"
+                              : user.systemRole === "OPERATION_MANAGER"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : user.systemRole === "PROJECT_MANAGER"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : "bg-gray-50"
+                          }`}
                         >
                           {user.systemRole.replace("_", " ")}
                         </Badge>
@@ -410,8 +485,8 @@ export default function User() {
                   </div>
                 </TableCell>
 
-                {/* Actions Column - Only show for HRM and Operation Managers */}
-                {hasAdminAccess && (
+                {/* Actions Column - Only show for authorized users */}
+                {canViewActionsMenu() && (
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -434,8 +509,8 @@ export default function User() {
                           View Profile
                         </DropdownMenuItem>
 
-                        {/* Show delete only for HRM */}
-                        {currentUser?.systemRole === "HRM" && (
+                        {/* Show delete option for users who can delete */}
+                        {canDeleteSpecificUser(user) && (
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -470,24 +545,28 @@ export default function User() {
         )}
       </div>
 
-      {/* Create User Modal - Only show for HRM */}
-      {isHRM && isCreateModalOpen && (
+      {/* Create User Modal - Only show for HRM and ADMIN */}
+      {canCreateUsers() && isCreateModalOpen && (
         <CreateUserModal
           open={isCreateModalOpen}
           onOpenChange={setIsCreateModalOpen}
           onCreateUser={handleCreateUser}
           isLoading={isCreatingUser}
+          currentUserRole={currentUser?.systemRole}
         />
       )}
 
       {/* Delete Confirmation Dialog */}
-      <DeleteUserDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        userToDelete={userToDelete}
-        onDeleteSuccess={handleDeleteSuccess}
-        currentUserRole={currentUser?.systemRole}
-      />
+      {userToDelete && (
+        <DeleteUserDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          userToDelete={userToDelete}
+          onDeleteSuccess={handleDeleteSuccess}
+          currentUserRole={currentUser?.systemRole}
+          currentUserId={currentUser?.id?.toString()}
+        />
+      )}
     </div>
   );
 }

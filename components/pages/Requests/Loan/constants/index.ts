@@ -1,0 +1,133 @@
+export interface Loan {
+  attendence_id: string;
+  name: string;
+  loanDate: string;
+  loanAmount: string;
+  installments: number;
+  paidAmount: string;
+  remainingAmount: string;
+  hr_approval: "PENDING" | "DECLINED" | "APPROVED";
+}
+
+export const dummyLoan: Loan[] = [
+  {
+    attendence_id: "123",
+    name: "John Doe",
+    loanDate: "2025-11-07",
+    loanAmount: "Rs. 60000",
+    installments: 6,
+    paidAmount: "Rs. 0",
+    remainingAmount: "Rs. 60000",
+    hr_approval: "PENDING",
+  },
+  {
+    attendence_id: "122",
+    name: "Roshaan Maqsood",
+    loanDate: "2025-11-09",
+    loanAmount: "Rs. 70000",
+    installments: 7,
+    paidAmount: "Rs. 20000",
+    remainingAmount: "Rs. 50000",
+    hr_approval: "APPROVED",
+  },
+  {
+    attendence_id: "120",
+    name: "Shawaiz Saeed",
+    loanDate: "2025-11-12",
+    loanAmount: "Rs. 30000",
+    installments: 2,
+    paidAmount: "Rs. 30000",
+    remainingAmount: "Rs. 0",
+    hr_approval: "APPROVED",
+  },
+  {
+    attendence_id: "119",
+    name: "Ahsan AHmed",
+    loanDate: "2025-11-13",
+    loanAmount: "Rs. 40000",
+    installments: 4,
+    paidAmount: "Rs. 0",
+    remainingAmount: "Rs. 40000",
+    hr_approval: "PENDING",
+  },
+  {
+    attendence_id: "118",
+    name: "Talha Dev",
+    loanDate: "2025-11-02",
+    loanAmount: "Rs. 60000",
+    installments: 6,
+    paidAmount: "Rs. 30000",
+    remainingAmount: "Rs. 30000",
+    hr_approval: "PENDING",
+  },
+  {
+    attendence_id: "117",
+    name: "Aaliyan Asif",
+    loanDate: "2025-11-17",
+    loanAmount: "Rs. 100000",
+    installments: 10,
+    paidAmount: "Rs. 0",
+    remainingAmount: "Rs. 100000",
+    hr_approval: "PENDING",
+  },
+  {
+    attendence_id: "117",
+    name: "Shabaz Salvi",
+    loanDate: "2025-11-22",
+    loanAmount: "Rs. 60000",
+    installments: 6,
+    paidAmount: "Rs. 60000",
+    remainingAmount: "Rs. 0",
+    hr_approval: "APPROVED",
+  },
+  {
+    attendence_id: "116",
+    name: "Nasir Dev",
+    loanDate: "2025-11-30",
+    loanAmount: "Rs. 10000",
+    installments: 1,
+    paidAmount: "Rs. 0",
+    remainingAmount: "Rs. 10000",
+    hr_approval: "DECLINED",
+  },
+  {
+    attendence_id: "115",
+    name: "Ayyaz Boota",
+    loanDate: "2025-11-01",
+    loanAmount: "Rs. 30000",
+    installments: 3,
+    paidAmount: "Rs. 0",
+    remainingAmount: "Rs. 30000",
+    hr_approval: "PENDING",
+  },
+  {
+    attendence_id: "114",
+    name: "Daud Dev",
+    loanDate: "2025-11-29",
+    loanAmount: "Rs 200000",
+    installments: 12,
+    paidAmount: "Rs. 80000",
+    remainingAmount: "Rs. 120000",
+    hr_approval: "APPROVED",
+  },
+  {
+    attendence_id: "113",
+    name: "Ahmed Rasool",
+    loanDate: "2025-11-05",
+    loanAmount: "Rs 200000",
+    installments: 12,
+    paidAmount: "Rs. 80000",
+    remainingAmount: "Rs. 120000",
+    hr_approval: "DECLINED",
+  },
+  {
+    attendence_id: "112",
+    name: "Faizan Ahmed",
+    loanDate: "2025-11-10",
+    loanAmount: "Rs 200000",
+    installments: 12,
+    paidAmount: "Rs. 80000",
+    remainingAmount: "Rs. 120000",
+    hr_approval: "PENDING",
+  },
+];

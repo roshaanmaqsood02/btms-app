@@ -17,7 +17,12 @@ export interface User {
   department?: string;
   projects?: string[];
   positions?: string[];
-  systemRole?: "EMPLOYEE" | "PROJECT_MANAGER" | "OPERATION_MANAGER" | "HRM";
+  systemRole?:
+    | "EMPLOYEE"
+    | "PROJECT_MANAGER"
+    | "OPERATION_MANAGER"
+    | "HRM"
+    | "ADMIN";
   is_active?: boolean;
   createdAt?: string;
   updatedAt?: string;

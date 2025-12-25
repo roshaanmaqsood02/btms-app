@@ -158,7 +158,7 @@ export default function Leave() {
       </AppDataTable>
 
       {/* Pagination Section */}
-      <div className="flex items-center justify-between">
+      <div>
         <TablePagination
           currentPage={currentPage}
           totalPages={totalPages}

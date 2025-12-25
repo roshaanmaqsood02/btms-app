@@ -189,9 +189,8 @@ export const userApi = api.injectEndpoints({
     >({
       query: ({ id, formData }) => ({
         url: `/users/${id}/profile-picture`,
-        method: "POST",
+        method: "PUT",
         body: formData,
-        // Note: Don't set Content-Type header for FormData, browser will set it with boundary
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: "Users", id },

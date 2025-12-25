@@ -25,7 +25,7 @@ const baseQuery = fetchBaseQuery({
 
     return headers;
   },
-  credentials: "include", // If you're using cookies
+  credentials: "include",
 });
 
 export const baseQueryWithReauth: BaseQueryFn<

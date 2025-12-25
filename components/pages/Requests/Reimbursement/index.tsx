@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FilterIcon } from "lucide-react";
+import { FilterIcon, Eye, Edit, Trash2 } from "lucide-react";
 import { TablePagination } from "@/components/common/pagination";
 import { AppDataTable } from "@/components/common/tableData";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -17,26 +17,23 @@ import { StatusBadge } from "@/components/common/statusBadges";
 import { dummyReimbursements, type Reimbursement } from "./constants";
 
 const TABLE_COLUMNS = [
-  "ID",
-  "Employee",
-  "Expense Date",
-  "Category",
-  "Description",
-  "Amount",
-  "Status",
-  "Submitted Date",
-  "Actions",
+  "ATT ID",
+  "NAME",
+  "TYPE",
+  "RECEIPT DATE",
+  "TOTAL EXPENSE",
+  "HR APPROVAL",
 ];
 
 export default function Reimbursement() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [filterType, setFilterType] = useState<"my_requests" | "all_requests">(
     "my_requests"
   );
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Use the dummy reimbursements data
+  // Use the imported reimbursements data
   const tableData: Reimbursement[] = dummyReimbursements;
 
   // Calculate pagination
@@ -64,13 +61,6 @@ export default function Reimbursement() {
     alert("Add new reimbursement request");
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -78,30 +68,6 @@ export default function Reimbursement() {
       day: "numeric",
       year: "numeric",
     });
-  };
-
-  const getEmployeeDisplay = (employeeName: string, employeeId: string) => {
-    return (
-      <div>
-        <div className="font-medium">{employeeName}</div>
-        <div className="text-sm text-gray-500">{employeeId}</div>
-      </div>
-    );
-  };
-
-  const handleView = (id: string) => {
-    console.log(`View reimbursement ${id}`);
-    // Implement view logic
-  };
-
-  const handleEdit = (id: string) => {
-    console.log(`Edit reimbursement ${id}`);
-    // Implement edit logic
-  };
-
-  const handleDelete = (id: string) => {
-    console.log(`Delete reimbursement ${id}`);
-    // Implement delete logic
   };
 
   return (
@@ -151,51 +117,22 @@ export default function Reimbursement() {
       {/* Table */}
       <AppDataTable columns={TABLE_COLUMNS} isLoading={isLoading}>
         {currentItems.length > 0 ? (
-          currentItems.map((request) => (
-            <TableRow key={request.id} className="hover:bg-gray-50/50">
-              <TableCell className="font-medium">{request.id}</TableCell>
-              <TableCell>
-                {getEmployeeDisplay(request.employeeName, request.employeeId)}
-              </TableCell>
-              <TableCell>{formatDate(request.expenseDate)}</TableCell>
-              <TableCell className="capitalize">{request.category}</TableCell>
-              <TableCell className="max-w-[200px] truncate">
-                {request.description}
-              </TableCell>
+          currentItems.map((request, index) => (
+            <TableRow
+              key={`${request.attendence_id}-${index}`}
+              className="hover:bg-gray-50/50"
+            >
               <TableCell className="font-medium">
-                {formatCurrency(request.amount)}
+                {request.attendence_id}
+              </TableCell>
+              <TableCell>{request.name}</TableCell>
+              <TableCell className="capitalize">{request.type}</TableCell>
+              <TableCell>{formatDate(request.receiptDate)}</TableCell>
+              <TableCell className="font-medium">
+                {request.totalExpense}
               </TableCell>
               <TableCell>
-                <StatusBadge status={request.status} />
-              </TableCell>
-              <TableCell>{formatDate(request.submittedDate)}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleView(request.id)}
-                    className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                  >
-                    View
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(request.id)}
-                    className="h-8 px-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(request.id)}
-                    className="h-8 px-2 text-red-600 hover:text-red-800 hover:bg-red-50"
-                  >
-                    Delete
-                  </Button>
-                </div>
+                <StatusBadge status={request.hr_approval} />
               </TableCell>
             </TableRow>
           ))
@@ -224,7 +161,7 @@ export default function Reimbursement() {
 
       {/* Pagination */}
       {totalItems > 0 && (
-        <div className="flex items-center justify-between">
+        <div>
           <TablePagination
             currentPage={currentPage}
             totalPages={totalPages}

@@ -20,12 +20,14 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, X, Plus, Camera, Upload } from "lucide-react";
+import { SystemRole } from "@/types";
 
 interface CreateUserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreateUser: (data: any) => Promise<void>;
   isLoading?: boolean;
+  currentUserRole?: string; // Add this prop
 }
 
 export default function CreateUserModal({
@@ -33,6 +35,7 @@ export default function CreateUserModal({
   onOpenChange,
   onCreateUser,
   isLoading = false,
+  currentUserRole, // Destructure it here
 }: CreateUserModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,7 +51,7 @@ export default function CreateUserModal({
     department: "",
     projects: [] as string[],
     positions: [] as string[],
-    systemRole: "EMPLOYEE", // Added systemRole for admin creation
+    systemRole: "EMPLOYEE" as SystemRole,
   });
 
   const [newProject, setNewProject] = useState<string>("");
@@ -77,6 +80,45 @@ export default function CreateUserModal({
     setSelectedFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  // Get available roles based on current user
+  const getAvailableRoles = () => {
+    if (currentUserRole === "ADMIN") {
+      return [
+        { value: "EMPLOYEE" as SystemRole, label: "Employee" },
+        { value: "PROJECT_MANAGER" as SystemRole, label: "Project Manager" },
+        {
+          value: "OPERATION_MANAGER" as SystemRole,
+          label: "Operation Manager",
+        },
+        { value: "CEO" as SystemRole, label: "CEO" },
+        { value: "CTO" as SystemRole, label: "CTO" },
+        { value: "HRM" as SystemRole, label: "HR Manager" },
+        { value: "ADMIN" as SystemRole, label: "Admin" },
+        { value: "STAFF" as SystemRole, label: "STAFF" },
+        { value: "INTERNS" as SystemRole, label: "INTERNS" },
+      ];
+    } else if (currentUserRole === "HRM") {
+      return [
+        { value: "EMPLOYEE" as SystemRole, label: "Employee" },
+        { value: "PROJECT_MANAGER" as SystemRole, label: "Project Manager" },
+        {
+          value: "OPERATION_MANAGER" as SystemRole,
+          label: "Operation Manager",
+        },
+      ];
+    } else {
+      // Default to HRM roles if no role specified
+      return [
+        { value: "EMPLOYEE" as SystemRole, label: "Employee" },
+        { value: "PROJECT_MANAGER" as SystemRole, label: "Project Manager" },
+        {
+          value: "OPERATION_MANAGER" as SystemRole,
+          label: "Operation Manager",
+        },
+      ];
     }
   };
 
@@ -136,6 +178,18 @@ export default function CreateUserModal({
       ...prev,
       [field]: value,
     }));
+  };
+
+  const handleSystemRoleChange = (value: string) => {
+    // Get valid roles based on current user
+    const availableRoles = getAvailableRoles().map((role) => role.value);
+
+    if (availableRoles.includes(value as SystemRole)) {
+      setFormData((prev) => ({
+        ...prev,
+        systemRole: value as SystemRole,
+      }));
+    }
   };
 
   // Profile picture handling
@@ -232,6 +286,9 @@ export default function CreateUserModal({
     }
   };
 
+  // Get role options for the select dropdown
+  const roleOptions = getAvailableRoles();
+
   return (
     <Dialog
       open={open}
@@ -243,6 +300,12 @@ export default function CreateUserModal({
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto scrollbar-hide">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Add New User</DialogTitle>
+          {currentUserRole && (
+            <p className="text-sm text-gray-500">
+              Creating as:{" "}
+              <span className="font-semibold">{currentUserRole}</span>
+            </p>
+          )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -298,6 +361,36 @@ export default function CreateUserModal({
               </div>
             </div>
 
+            {/* System Role */}
+            <div className="" id="system-role-section">
+              <div className="space-y-2 max-w-md">
+                <Label
+                  htmlFor="systemRole"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  System Role
+                </Label>
+                <Select
+                  value={formData.systemRole}
+                  onValueChange={handleSystemRoleChange}
+                >
+                  <SelectTrigger className="w-full py-3 rounded-md border-2 border-gray-200 focus:border-[rgb(96,57,187)]">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Available roles based on your permissions
+                </p>
+              </div>
+            </div>
+
             {/* Full Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Full Name *</Label>
@@ -337,27 +430,6 @@ export default function CreateUserModal({
                 placeholder="••••••••"
                 className="py-2"
               />
-            </div>
-
-            {/* System Role */}
-            <div className="space-y-2">
-              <Label htmlFor="systemRole">System Role *</Label>
-              <Select
-                value={formData.systemRole}
-                onValueChange={(value) => handleChange("systemRole", value)}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="EMPLOYEE">Employee</SelectItem>
-                  <SelectItem value="OPERATION_MANAGER">
-                    Operation Manager
-                  </SelectItem>
-                  <SelectItem value="HRM">HR Manager</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Gender */}

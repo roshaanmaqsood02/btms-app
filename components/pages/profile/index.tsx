@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/redux/hook";
 import {
   logout,
@@ -35,30 +35,34 @@ import {
   Droplet,
   CreditCard,
   ArrowLeft,
-  Shield,
 } from "lucide-react";
 import { LoadingState } from "@/components/common/loadingState";
 import { NoProfileStates } from "@/components/pages/Profile/components/NoProfileState";
 import { ProfilePictureUploader } from "@/components/pages/Profile/components/ProfilePictureUpload";
-import { DeleteAccountDialog } from "@/components/pages/Profile/components/DeleteAccountDialog";
 import { EditProfileDialog } from "@/components/pages/Profile/components/EditProfileDetails";
 import { toast } from "sonner";
-import { useDeleteUserMutation } from "@/redux/services/userApi";
+import DeleteUserDialog from "../User/DeleteUser";
 
-export default function UserProfilePage() {
+interface ProfileProps {
+  usersId: string;
+}
+
+export default function Profile({ usersId }: ProfileProps) {
   const router = useRouter();
-  const params = useParams();
   const dispatch = useAppDispatch();
 
-  const userId = params.id as string;
+  const userId = usersId;
   const currentUser = useAppSelector(selectCurrentUser);
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
 
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState<boolean>(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [deleteUserMutation, { isLoading: isDeleting }] =
-    useDeleteUserMutation();
+  const [userToDelete, setUserToDelete] = useState<{
+    id: string;
+    name: string;
+    systemRole?: string;
+  } | null>(null);
 
   // Fetch user data by ID
   const {
@@ -70,20 +74,179 @@ export default function UserProfilePage() {
     skip: !userId,
   });
 
-  // Check if current user has permission to view this profile
-  const hasPermissionToView = () => {
+  // Check if current user has permission to view this profile - return boolean
+  const hasPermissionToView = useMemo(() => {
     if (!currentUser) return false;
 
     // Users can view their own profile
-    if (currentUser.id?.toString() === userId) return true; // FIX: Convert to string for comparison
+    if (currentUser.id?.toString() === userId) return true;
 
-    // HRM and Operation Managers can view any profile
+    // HRM, Operation Managers and Project Managers can view any profile
     return (
       currentUser.systemRole === "HRM" ||
-      currentUser.systemRole === "OPERATION_MANAGER"
+      currentUser.systemRole === "OPERATION_MANAGER" ||
+      currentUser.systemRole === "PROJECT_MANAGER" ||
+      currentUser.systemRole === "ADMIN"
     );
-  };
+  }, [currentUser, userId]);
 
+  // Check if current user can edit this profile
+  const canEditProfile = useMemo(() => {
+    if (!currentUser || !profileData) return false;
+
+    const currentUserId = currentUser.id?.toString();
+    const targetUserId = profileData.id?.toString();
+
+    // Users can edit their own profile
+    if (currentUserId === targetUserId) return true;
+
+    // ADMIN can edit any profile
+    if (currentUser.systemRole === "ADMIN") return true;
+
+    // HRM and Operation Managers can edit certain profiles
+    if (
+      currentUser.systemRole === "HRM" ||
+      currentUser.systemRole === "OPERATION_MANAGER"
+    ) {
+      const targetUserRole = profileData.systemRole;
+
+      if (currentUser.systemRole === "HRM") {
+        // HRM cannot edit ADMIN, other HRM, or Operation Managers
+        return !(
+          targetUserRole === "ADMIN" ||
+          targetUserRole === "HRM" ||
+          targetUserRole === "OPERATION_MANAGER"
+        );
+      }
+
+      if (currentUser.systemRole === "OPERATION_MANAGER") {
+        // Operation Manager cannot edit ADMIN, HRM, or other Operation Managers
+        return !(
+          targetUserRole === "ADMIN" ||
+          targetUserRole === "HRM" ||
+          targetUserRole === "OPERATION_MANAGER"
+        );
+      }
+    }
+
+    return false;
+  }, [currentUser, profileData]);
+
+  // Check if current user can delete this profile
+  const canDeleteProfile = useMemo(() => {
+    if (!currentUser || !profileData) return false;
+
+    const currentUserId = currentUser.id?.toString();
+    const targetUserId = profileData.id?.toString();
+
+    // Cannot delete yourself from profile page
+    if (currentUserId === targetUserId) return false;
+
+    // ADMIN can delete anyone
+    if (currentUser.systemRole === "ADMIN") return true;
+
+    // HRM can delete some users
+    if (currentUser.systemRole === "HRM") {
+      const targetUserRole = profileData.systemRole;
+      // HRM cannot delete ADMIN, other HRM, or Operation Managers
+      return !(
+        targetUserRole === "ADMIN" ||
+        targetUserRole === "HRM" ||
+        targetUserRole === "OPERATION_MANAGER"
+      );
+    }
+
+    return false;
+  }, [currentUser, profileData, userId]);
+
+  // Format date safely - memoize this function
+  const formatDate = useCallback((dateString?: string) => {
+    if (!dateString) return "Not specified";
+
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return "Invalid date";
+    }
+  }, []);
+
+  // Memoize the edit dialog rendering condition
+  const shouldShowEditDialog = useMemo(() => {
+    return canEditProfile && isEditOpen;
+  }, [canEditProfile, isEditOpen]);
+
+  // Handle edit profile success
+  const handleUpdateSuccess = useCallback(async () => {
+    await refetch();
+    setIsEditOpen(false);
+    setEditingSection(null);
+    toast.success("Profile updated successfully");
+  }, [refetch]);
+
+  // Handle delete button click
+  const handleDeleteClick = useCallback(() => {
+    if (!profileData) return;
+
+    if (!canDeleteProfile) {
+      let errorMessage = "You do not have permission to delete this user";
+
+      if (
+        currentUser?.systemRole === "HRM" &&
+        profileData.systemRole &&
+        (profileData.systemRole === "ADMIN" ||
+          profileData.systemRole === "HRM" ||
+          profileData.systemRole === "OPERATION_MANAGER")
+      ) {
+        errorMessage = "HRM cannot delete ADMIN, HRM, or Operation Managers";
+      } else if (currentUser?.id?.toString() === profileData.id?.toString()) {
+        errorMessage = "You cannot delete your own account from here";
+      }
+
+      toast.error("Permission Denied", {
+        description: errorMessage,
+      });
+      return;
+    }
+
+    setUserToDelete({
+      id: profileData.id.toString(),
+      name: profileData.name,
+      systemRole: profileData.systemRole,
+    });
+    setIsDeleteDialogOpen(true);
+  }, [profileData, canDeleteProfile, currentUser]);
+
+  // Handle delete success
+  const handleDeleteSuccess = useCallback(async () => {
+    try {
+      toast.success("User deleted successfully", {
+        description: "The user has been removed from the system",
+      });
+
+      // Reset dialog state
+      setUserToDelete(null);
+      setIsDeleteDialogOpen(false);
+
+      // Go back to users list
+      router.push("/users");
+    } catch (error: any) {
+      toast.error("Failed to delete user", {
+        description: error?.data?.message || "Please try again later",
+      });
+    }
+  }, [router]);
+
+  const handleEditSection = useCallback((section: string) => {
+    setEditingSection(section);
+    setIsEditOpen(true);
+  }, []);
+
+  // Handle authentication and permission checks
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login");
@@ -91,7 +254,7 @@ export default function UserProfilePage() {
     }
 
     // Check permission after currentUser is loaded
-    if (currentUser && !hasPermissionToView()) {
+    if (currentUser && !hasPermissionToView) {
       toast.error("Access Denied", {
         description: "You don't have permission to view this profile",
       });
@@ -105,81 +268,16 @@ export default function UserProfilePage() {
       });
       router.push("/users");
     }
-  }, [isAuthenticated, currentUser, userId, profileError, router]);
+  }, [
+    isAuthenticated,
+    currentUser,
+    userId,
+    profileError,
+    router,
+    hasPermissionToView,
+  ]);
 
-  const handleUpdateSuccess = async (updatedData: any) => {
-    await refetch();
-    setIsEditOpen(false);
-    setEditingSection(null);
-    toast.success("Profile updated successfully");
-  };
-
-  const handleDeleteSuccess = async () => {
-    try {
-      await deleteUserMutation(userId).unwrap();
-
-      toast.success("User deleted successfully", {
-        description: "The user has been removed from the system",
-      });
-
-      // If admin is deleting their own account, logout
-      if (currentUser?.id?.toString() === userId) {
-        // FIX: Convert to string
-        dispatch(logout());
-        router.push("/");
-      } else {
-        // Otherwise go back to users list
-        router.push("/users");
-      }
-    } catch (error: any) {
-      toast.error("Failed to delete user", {
-        description: error?.data?.message || "Please try again later",
-      });
-    }
-  };
-
-  const handleEditSection = (section: string) => {
-    setEditingSection(section);
-    setIsEditOpen(true);
-  };
-
-  // Check if current user can edit this profile
-  const canEditProfile = () => {
-    if (!currentUser || !profileData) return false;
-
-    // HRM and Operation Managers can edit any profile
-    return (
-      currentUser.systemRole === "HRM" ||
-      currentUser.systemRole === "OPERATION_MANAGER"
-    );
-  };
-
-  // Check if current user can delete this profile
-  const canDeleteProfile = () => {
-    if (!currentUser) return false;
-
-    // Only HRM can delete users (can't delete their own account from here)
-    return (
-      currentUser.systemRole === "HRM" && currentUser.id?.toString() !== userId
-    ); // FIX: Convert to string
-  };
-
-  // Format date safely
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "Not specified";
-
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch {
-      return "Invalid date";
-    }
-  };
-
+  // Early returns after all hooks
   if (isProfileLoading) {
     return <LoadingState />;
   }
@@ -213,22 +311,30 @@ export default function UserProfilePage() {
                   <ProfilePictureUploader
                     size="lg"
                     userId={userId}
-                    profileData={profileData} // Pass the profile data
+                    profileData={profileData}
                     onUploadSuccess={() => {
                       refetch();
                       toast.success("Profile picture updated successfully");
                     }}
-                    canEdit={canEditProfile()}
+                    canEdit={
+                      canEditProfile || currentUser?.systemRole === "ADMIN"
+                    }
                   />
                 </div>
                 <div className="text-center md:text-left">
                   <CardTitle className="text-3xl font-bold mb-2">
                     {profileData.name}
-                    {currentUser?.id?.toString() === userId && ( // FIX: Convert to string
+                    {currentUser?.id?.toString() === userId && (
                       <span className="ml-3 text-sm font-normal bg-white/20 px-2 py-1 rounded">
                         (You)
                       </span>
                     )}
+                    {currentUser?.systemRole === "ADMIN" &&
+                      currentUser?.id?.toString() !== userId && (
+                        <span className="ml-3 text-sm font-normal bg-red-500 px-2 py-1 rounded">
+                          Viewing as ADMIN
+                        </span>
+                      )}
                   </CardTitle>
                   <CardDescription className="text-white/90 text-lg flex items-center justify-center md:justify-start gap-2">
                     <Mail className="h-4 w-4" />
@@ -247,10 +353,10 @@ export default function UserProfilePage() {
               </div>
 
               {/* Action Buttons */}
-              <div>
-                {canDeleteProfile() && (
+              <div className="flex gap-2">
+                {canDeleteProfile && (
                   <Button
-                    onClick={() => setIsDeleteOpen(true)}
+                    onClick={handleDeleteClick}
                     variant="destructive"
                     className="rounded-xl shadow-md hover:shadow-lg transition-shadow"
                     size="lg"
@@ -270,7 +376,7 @@ export default function UserProfilePage() {
                   <User className="h-5 w-5 text-[rgb(96,57,187)]" />
                   Personal Information
                 </h3>
-                {canEditProfile() && (
+                {canEditProfile && (
                   <Button
                     onClick={() => handleEditSection("personal")}
                     variant="ghost"
@@ -308,7 +414,7 @@ export default function UserProfilePage() {
                 <InfoCard
                   icon={<Calendar className="h-5 w-5" />}
                   label="Date of Birth"
-                  value={formatDate(profileData.dateOfBirth)} // FIX: Use safe date formatter
+                  value={formatDate(profileData.dateOfBirth)}
                   color="green"
                 />
                 <InfoCard
@@ -341,7 +447,7 @@ export default function UserProfilePage() {
                   <Phone className="h-5 w-5 text-[rgb(96,57,187)]" />
                   Contact Information
                 </h3>
-                {canEditProfile() && (
+                {canEditProfile && (
                   <Button
                     onClick={() => handleEditSection("contact")}
                     variant="ghost"
@@ -391,7 +497,7 @@ export default function UserProfilePage() {
                     <FolderKanban className="h-5 w-5 text-[rgb(96,57,187)]" />
                     Projects
                   </h3>
-                  {canEditProfile() && (
+                  {canEditProfile && (
                     <Button
                       onClick={() => handleEditSection("projects")}
                       variant="ghost"
@@ -430,7 +536,7 @@ export default function UserProfilePage() {
                     <Award className="h-5 w-5 text-[rgb(96,57,187)]" />
                     Positions
                   </h3>
-                  {canEditProfile() && (
+                  {canEditProfile && (
                     <Button
                       onClick={() => handleEditSection("positions")}
                       variant="ghost"
@@ -464,64 +570,69 @@ export default function UserProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Edit Profile Dialog */}
-        {canEditProfile() && (
+        {/* Edit Profile Dialog - Conditionally render */}
+        {shouldShowEditDialog && (
           <EditProfileDialog
             open={isEditOpen}
             onOpenChange={setIsEditOpen}
             profileData={profileData}
             onUpdateSuccess={handleUpdateSuccess}
             editingSection={editingSection}
+            userId={userId}
           />
         )}
 
-        {/* Delete Account Dialog */}
-        <DeleteAccountDialog
-          open={isDeleteOpen}
-          onOpenChange={setIsDeleteOpen}
-          onDeleteSuccess={handleDeleteSuccess}
-          isDeleting={isDeleting}
-          userName={profileData.name}
-          isSelfDelete={currentUser?.id?.toString() === userId} // FIX: Convert to string
-        />
+        {/* Delete Confirmation Dialog */}
+        {userToDelete && (
+          <DeleteUserDialog
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            userToDelete={userToDelete}
+            onDeleteSuccess={handleDeleteSuccess}
+            currentUserRole={currentUser?.systemRole}
+            currentUserId={currentUser?.id?.toString()}
+          />
+        )}
       </main>
     </div>
   );
 }
 
-// Info Card Component
-function InfoCard({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  color: string;
-}) {
-  const colorClasses = {
-    blue: "bg-blue-50 text-blue-700 border-blue-200",
-    purple: "bg-purple-50 text-purple-700 border-purple-200",
-    green: "bg-green-50 text-green-700 border-green-200",
-    pink: "bg-pink-50 text-pink-700 border-pink-200",
-    red: "bg-red-50 text-red-700 border-red-200",
-    indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    orange: "bg-orange-50 text-orange-700 border-orange-200",
-  };
+// Info Card Component - Memoized
+const InfoCard = React.memo(
+  ({
+    icon,
+    label,
+    value,
+    color,
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    value: string;
+    color: string;
+  }) => {
+    const colorClasses = {
+      blue: "bg-blue-50 text-blue-700 border-blue-200",
+      purple: "bg-purple-50 text-purple-700 border-purple-200",
+      green: "bg-green-50 text-green-700 border-green-200",
+      pink: "bg-pink-50 text-pink-700 border-pink-200",
+      red: "bg-red-50 text-red-700 border-red-200",
+      indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
+      orange: "bg-orange-50 text-orange-700 border-orange-200",
+    };
 
-  return (
-    <div
-      className={`p-4 rounded-xl border-2 ${
-        colorClasses[color as keyof typeof colorClasses] || colorClasses.blue
-      } transition-all hover:shadow-md`}
-    >
-      <div className="flex items-center gap-3 mb-2">
-        <div className="opacity-70">{icon}</div>
-        <span className="text-sm font-medium opacity-80">{label}</span>
+    return (
+      <div
+        className={`p-4 rounded-xl border-2 ${
+          colorClasses[color as keyof typeof colorClasses] || colorClasses.blue
+        } transition-all hover:shadow-md`}
+      >
+        <div className="flex items-center gap-3 mb-2">
+          <div className="opacity-70">{icon}</div>
+          <span className="text-sm font-medium opacity-80">{label}</span>
+        </div>
+        <p className="text-lg font-semibold pl-8">{value}</p>
       </div>
-      <p className="text-lg font-semibold pl-8">{value}</p>
-    </div>
-  );
-}
+    );
+  }
+);
