@@ -45,9 +45,11 @@ import { SystemRole } from "@/types";
 
 interface UserProfile {
   id?: string | number;
-  name?: string;
+  firstname?: string;
+  lastname?: string;
   gender?: string;
   city?: string;
+  province?: string;
   country?: string;
   phone?: string;
   postalCode?: string;
@@ -84,9 +86,11 @@ export function EditProfileDialog({
 
   const [editData, setEditData] = useState<UserProfile>({
     id: profileData.id,
-    name: profileData.name || "",
+    firstname: profileData.firstname || "",
+    lastname: profileData.lastname || "",
     gender: profileData.gender || "male",
     city: profileData.city || "",
+    province: profileData.province || "",
     country: profileData.country || "",
     phone: profileData.phone || "",
     postalCode: profileData.postalCode || "",
@@ -233,9 +237,11 @@ export function EditProfileDialog({
   useEffect(() => {
     setEditData({
       id: profileData.id,
-      name: profileData.name || "",
+      firstname: profileData.firstname || "",
+      lastname: profileData.lastname || "",
       gender: profileData.gender || "male",
       city: profileData.city || "",
+      province: profileData.province || "",
       country: profileData.country || "",
       phone: profileData.phone || "",
       postalCode: profileData.postalCode || "",
@@ -420,7 +426,10 @@ export function EditProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl border-0 shadow-2xl scrollbar-hide">
+      <DialogContent
+        width="5xl"
+        className="max-h-[90vh] overflow-y-auto p-0 rounded-2xl border-0 shadow-2xl scrollbar-hide"
+      >
         {/* Dialog Header with Gradient */}
         <div className="bg-gradient-to-r from-[rgb(96,57,187)] to-[rgb(120,80,200)] text-white p-8 rounded-t-2xl">
           <DialogHeader>
@@ -435,7 +444,9 @@ export function EditProfileDialog({
             <DialogDescription className="text-white/90 text-lg">
               {isSelfEdit
                 ? "Editing your own profile"
-                : `Updating user: ${profileData.name || editData.id}`}
+                : `Updating user: ${profileData.firstname} ${
+                    profileData.lastname || editData.id
+                  }`}
               {currentUser?.systemRole &&
                 ` (You are ${currentUser.systemRole})`}
             </DialogDescription>
@@ -514,9 +525,20 @@ export function EditProfileDialog({
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      id="name"
-                      name="name"
-                      value={editData.name}
+                      id="firstname"
+                      name="firstname"
+                      value={editData.firstname}
+                      onChange={handleEditChange}
+                      placeholder="Enter full name"
+                      className="pl-10 py-6 rounded-xl border-2 border-gray-200 focus:border-[rgb(96,57,187)] focus:ring-2 focus:ring-[rgb(96,57,187)]/20 transition-all"
+                    />
+                  </div>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="lastname"
+                      name="lastname"
+                      value={editData.lastname}
                       onChange={handleEditChange}
                       placeholder="Enter full name"
                       className="pl-10 py-6 rounded-xl border-2 border-gray-200 focus:border-[rgb(96,57,187)] focus:ring-2 focus:ring-[rgb(96,57,187)]/20 transition-all"
@@ -698,6 +720,26 @@ export function EditProfileDialog({
                       id="city"
                       name="city"
                       value={editData.city}
+                      onChange={handleEditChange}
+                      placeholder="Enter city"
+                      className="pl-10 py-6 rounded-xl border-2 border-gray-200 focus:border-[rgb(96,57,187)] focus:ring-2 focus:ring-[rgb(96,57,187)]/20 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label
+                    htmlFor="city"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Province
+                  </Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="province"
+                      name="province"
+                      value={editData.province}
                       onChange={handleEditChange}
                       placeholder="Enter city"
                       className="pl-10 py-6 rounded-xl border-2 border-gray-200 focus:border-[rgb(96,57,187)] focus:ring-2 focus:ring-[rgb(96,57,187)]/20 transition-all"

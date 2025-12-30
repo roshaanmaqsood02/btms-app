@@ -1,37 +1,77 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { XIcon } from "lucide-react"
+import * as React from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { XIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
+// Types
+interface DialogContentProps
+  extends React.ComponentProps<typeof DialogPrimitive.Content> {
+  showCloseButton?: boolean;
+  width?:
+    | "sm"
+    | "md"
+    | "lg"
+    | "xl"
+    | "2xl"
+    | "3xl"
+    | "4xl"
+    | "5xl"
+    | "6xl"
+    | "7xl"
+    | "full"
+    | string;
+  maxWidth?: string;
+  fullScreen?: boolean;
+  closeOnOverlayClick?: boolean;
+  disableOutsideScroll?: boolean;
+}
+
+// Width configuration
+const WIDTH_CLASSES = {
+  sm: "sm:max-w-sm",
+  md: "sm:max-w-md",
+  lg: "sm:max-w-lg",
+  xl: "sm:max-w-xl",
+  "2xl": "sm:max-w-2xl",
+  "3xl": "sm:max-w-3xl",
+  "4xl": "sm:max-w-4xl",
+  "5xl": "sm:max-w-5xl",
+  "6xl": "sm:max-w-6xl",
+  "7xl": "sm:max-w-7xl",
+  full: "sm:max-w-full",
+} as const;
+
+// Base Components
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
 }
 
 function DialogTrigger({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
 }
 
 function DialogPortal({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
+  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />;
 }
 
 function DialogClose({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
+  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
 
 function DialogOverlay({
   className,
+  onClick,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
   return (
@@ -41,26 +81,65 @@ function DialogOverlay({
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
         className
       )}
+      onClick={onClick}
       {...props}
     />
-  )
+  );
 }
 
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  width = "lg",
+  maxWidth,
+  fullScreen = false,
+  closeOnOverlayClick = false,
+  disableOutsideScroll = false,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean
-}) {
+}: DialogContentProps) {
+  React.useEffect(() => {
+    if (disableOutsideScroll) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "unset";
+      };
+    }
+  }, [disableOutsideScroll]);
+
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (closeOnOverlayClick && props.onInteractOutside === undefined) {
+      e.preventDefault();
+    }
+  };
+
+  const widthClass =
+    typeof width === "string" && width in WIDTH_CLASSES
+      ? WIDTH_CLASSES[width as keyof typeof WIDTH_CLASSES]
+      : "";
+
+  const customWidthClass = maxWidth ? `sm:max-w-[${maxWidth}]` : "";
+
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
+      <DialogOverlay
+        onClick={closeOnOverlayClick ? handleOverlayClick : undefined}
+      />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 outline-none sm:max-w-lg",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 outline-none",
+          fullScreen
+            ? "h-[calc(100%-2rem)] sm:h-[calc(100%-4rem)]"
+            : "max-h-[calc(100%-2rem)]",
+          fullScreen
+            ? "sm:max-w-[calc(100%-2rem)]"
+            : cn(
+                widthClass,
+                customWidthClass,
+                !widthClass && !customWidthClass && "sm:max-w-lg"
+              ),
+          fullScreen && "overflow-auto",
           className
         )}
         {...props}
@@ -77,7 +156,7 @@ function DialogContent({
         )}
       </DialogPrimitive.Content>
     </DialogPortal>
-  )
+  );
 }
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
@@ -87,7 +166,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
       {...props}
     />
-  )
+  );
 }
 
 function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
@@ -100,7 +179,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
       )}
       {...props}
     />
-  )
+  );
 }
 
 function DialogTitle({
@@ -113,7 +192,7 @@ function DialogTitle({
       className={cn("text-lg leading-none font-semibold", className)}
       {...props}
     />
-  )
+  );
 }
 
 function DialogDescription({
@@ -126,8 +205,85 @@ function DialogDescription({
       className={cn("text-muted-foreground text-sm", className)}
       {...props}
     />
-  )
+  );
 }
+
+// Additional Helper Components
+const DialogBody: React.FC<React.ComponentProps<"div">> = ({
+  className,
+  ...props
+}) => (
+  <div
+    data-slot="dialog-body"
+    className={cn("overflow-y-auto flex-1", className)}
+    {...props}
+  />
+);
+
+const DialogSection: React.FC<React.ComponentProps<"div">> = ({
+  className,
+  ...props
+}) => (
+  <div
+    data-slot="dialog-section"
+    className={cn("space-y-4", className)}
+    {...props}
+  />
+);
+
+// Usage examples in comments:
+/*
+// Standard usage with default width
+<Dialog>
+  <DialogContent>
+    <DialogHeader>...</DialogHeader>
+    <DialogBody>...</DialogBody>
+    <DialogFooter>...</DialogFooter>
+  </DialogContent>
+</Dialog>
+
+// Custom width using preset
+<Dialog>
+  <DialogContent width="4xl">
+    ...
+  </DialogContent>
+</Dialog>
+
+// Custom width using custom max-width
+<Dialog>
+  <DialogContent maxWidth="1200px">
+    ...
+  </DialogContent>
+</Dialog>
+
+// Full-screen dialog
+<Dialog>
+  <DialogContent fullScreen>
+    ...
+  </DialogContent>
+</Dialog>
+
+// Dialog without close button
+<Dialog>
+  <DialogContent showCloseButton={false}>
+    ...
+  </DialogContent>
+</Dialog>
+
+// Dialog that prevents body scroll
+<Dialog>
+  <DialogContent disableOutsideScroll>
+    ...
+  </DialogContent>
+</Dialog>
+
+// Dialog that closes on overlay click
+<Dialog>
+  <DialogContent closeOnOverlayClick>
+    ...
+  </DialogContent>
+</Dialog>
+*/
 
 export {
   Dialog,
@@ -140,4 +296,6 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
-}
+  DialogBody,
+  DialogSection,
+};

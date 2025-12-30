@@ -6,11 +6,13 @@ export interface User {
   uuid: string;
   employeeId: string;
   attendanceId: string;
-  name: string;
+  firstname: string;
+  lastname: string;
   email: string;
   phone: string;
   country: string;
   city: string;
+  province?: string;
   gender?: string;
   dateOfBirth: string;
   maritalStatus: string;

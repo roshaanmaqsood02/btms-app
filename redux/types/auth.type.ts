@@ -3,7 +3,9 @@ export interface User {
   uuid?: string;
   email: string;
   attendanceId: string;
-  name: string;
+  employeeId: string;
+  firstname: string;
+  lastname: string;
   gender: string;
   dateOfBirth: Date;
   maritalStatus: string;
@@ -11,6 +13,7 @@ export interface User {
   cnic?: string;
   profilePic?: string;
   city?: string;
+  province?: string;
   country?: string;
   phone?: string;
   postalCode?: string;
@@ -22,7 +25,11 @@ export interface User {
     | "PROJECT_MANAGER"
     | "OPERATION_MANAGER"
     | "HRM"
-    | "ADMIN";
+    | "ADMIN"
+    | "CEO"
+    | "CTO"
+    | "INTERNS"
+    | "STAFF";
   is_active?: boolean;
   createdAt?: string;
   updatedAt?: string;

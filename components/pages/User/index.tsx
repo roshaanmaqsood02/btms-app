@@ -27,7 +27,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import CreateUserModal from "./CreateUser";
 import { useRouter } from "next/navigation";
 import DeleteUserDialog from "./DeleteUser";
 
@@ -36,8 +35,6 @@ export default function User() {
   const dispatch = useAppDispatch();
 
   // Get query params with defaults
-  const [createUser, { isLoading: isCreatingUser }] = useCreateUserMutation();
-
   const queryParams = useAppSelector(selectUserQueryParams) || {
     page: 1,
     limit: 10,
@@ -65,8 +62,6 @@ export default function User() {
     name: string;
     systemRole?: string;
   } | null>(null);
-  // Add state for create user modal
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
   const totalItems = data?.total || 0;
   const totalPages = Math.ceil(totalItems / safeQueryParams.limit);
@@ -174,7 +169,7 @@ export default function User() {
     [currentUser, router]
   );
 
-  // Handle add user
+  // Handle add user - Navigate to the tabbed page
   const handleAddUser = useCallback(() => {
     if (!canCreateUsers()) {
       toast.error("Permission Denied", {
@@ -183,63 +178,9 @@ export default function User() {
       return;
     }
 
-    setIsCreateModalOpen(true);
-  }, [canCreateUsers]);
-
-  // Handle create user
-  const handleCreateUser = useCallback(
-    async (data: any) => {
-      const { userData, profilePicture } = data;
-
-      try {
-        // ADMIN can create any role, HRM has restrictions
-        if (currentUser?.systemRole === "HRM") {
-          const hrAllowedRoles = [
-            "EMPLOYEE",
-            "PROJECT_MANAGER",
-            "OPERATION_MANAGER",
-          ];
-          if (
-            userData.systemRole &&
-            !hrAllowedRoles.includes(userData.systemRole)
-          ) {
-            toast.error("Permission Denied", {
-              description:
-                "HRM can only create EMPLOYEE, PROJECT_MANAGER, or OPERATION_MANAGER roles",
-            });
-            return;
-          }
-        }
-
-        // Create the user
-        const result = await createUser(userData).unwrap();
-
-        toast.success("User created successfully!", {
-          description: `${result.name} has been added to the system`,
-        });
-
-        setIsCreateModalOpen(false);
-        refetch(); // Refresh the user list
-
-        // Note: For profile picture upload, you'll need a separate endpoint
-        if (profilePicture) {
-          toast.info("Profile picture upload", {
-            description: "Profile picture can be uploaded in user edit mode",
-          });
-        }
-      } catch (error: any) {
-        const errorMessage =
-          error?.data?.message || error?.message || "Failed to create user";
-
-        toast.error("Failed to create user", {
-          description: errorMessage,
-        });
-        throw error;
-      }
-    },
-    [createUser, refetch, currentUser]
-  );
-
+    // Use router.push with the correct path
+    router.push("/users/add");
+  }, [canCreateUsers, router]);
   // Handle delete confirmation
   const handleDeleteClick = useCallback(
     (user: any) => {
@@ -376,17 +317,17 @@ export default function User() {
                       {user?.profilePic && (
                         <AvatarImage
                           src={getProfilePicUrl(user)}
-                          alt={user?.name || "User"}
+                          alt={user?.firstname + " " + user?.lastname || "User"}
                           className="object-cover"
                         />
                       )}
                       <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
-                        {getInitials(user?.name)}
+                        {getInitials(user?.firstname + " " + user?.lastname)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
                       <span className="font-medium text-gray-900">
-                        {user.name}
+                        {user.firstname} {user.lastname}
                       </span>
                       {user.systemRole && (
                         <Badge
@@ -544,17 +485,6 @@ export default function User() {
           />
         )}
       </div>
-
-      {/* Create User Modal - Only show for HRM and ADMIN */}
-      {canCreateUsers() && isCreateModalOpen && (
-        <CreateUserModal
-          open={isCreateModalOpen}
-          onOpenChange={setIsCreateModalOpen}
-          onCreateUser={handleCreateUser}
-          isLoading={isCreatingUser}
-          currentUserRole={currentUser?.systemRole}
-        />
-      )}
 
       {/* Delete Confirmation Dialog */}
       {userToDelete && (

@@ -2,9 +2,8 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAppSelector, useAppDispatch } from "@/redux/hook";
+import { useAppSelector } from "@/redux/hook";
 import {
-  logout,
   selectCurrentUser,
   selectIsAuthenticated,
 } from "@/redux/slices/authSlice";
@@ -35,6 +34,8 @@ import {
   Droplet,
   CreditCard,
   ArrowLeft,
+  Lock,
+  GraduationCap,
 } from "lucide-react";
 import { LoadingState } from "@/components/common/loadingState";
 import { NoProfileStates } from "@/components/pages/Profile/components/NoProfileState";
@@ -42,6 +43,8 @@ import { ProfilePictureUploader } from "@/components/pages/Profile/components/Pr
 import { EditProfileDialog } from "@/components/pages/Profile/components/EditProfileDetails";
 import { toast } from "sonner";
 import DeleteUserDialog from "../User/DeleteUser";
+import ContractInfo from "./ContractInfo";
+import EducationInfo from "./EducationInfo";
 
 interface ProfileProps {
   usersId: string;
@@ -49,8 +52,6 @@ interface ProfileProps {
 
 export default function Profile({ usersId }: ProfileProps) {
   const router = useRouter();
-  const dispatch = useAppDispatch();
-
   const userId = usersId;
   const currentUser = useAppSelector(selectCurrentUser);
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
@@ -132,6 +133,21 @@ export default function Profile({ usersId }: ProfileProps) {
     return false;
   }, [currentUser, profileData]);
 
+  // Check if current user can view contract section
+  const canViewContractSection = useMemo(() => {
+    if (!currentUser) return false;
+
+    // PROJECT_MANAGER cannot view contract section
+    if (currentUser.systemRole === "PROJECT_MANAGER") return false;
+
+    // Other roles can view contract section
+    return (
+      currentUser.systemRole === "ADMIN" ||
+      currentUser.systemRole === "HRM" ||
+      currentUser.systemRole === "OPERATION_MANAGER"
+    );
+  }, [currentUser]);
+
   // Check if current user can delete this profile
   const canDeleteProfile = useMemo(() => {
     if (!currentUser || !profileData) return false;
@@ -180,6 +196,14 @@ export default function Profile({ usersId }: ProfileProps) {
     return canEditProfile && isEditOpen;
   }, [canEditProfile, isEditOpen]);
 
+  // Check if current user can view education section
+  const canViewEducationSection = useMemo(() => {
+    if (!currentUser) return false;
+
+    // All authenticated users can view education
+    return true;
+  }, [currentUser]);
+
   // Handle edit profile success
   const handleUpdateSuccess = useCallback(async () => {
     await refetch();
@@ -215,7 +239,7 @@ export default function Profile({ usersId }: ProfileProps) {
 
     setUserToDelete({
       id: profileData.id.toString(),
-      name: profileData.name,
+      name: profileData.firstname + " " + profileData.lastname,
       systemRole: profileData.systemRole,
     });
     setIsDeleteDialogOpen(true);
@@ -323,7 +347,7 @@ export default function Profile({ usersId }: ProfileProps) {
                 </div>
                 <div className="text-center md:text-left">
                   <CardTitle className="text-3xl font-bold mb-2">
-                    {profileData.name}
+                    {profileData.firstname} {profileData.lastname}
                     {currentUser?.id?.toString() === userId && (
                       <span className="ml-3 text-sm font-normal bg-white/20 px-2 py-1 rounded">
                         (You)
@@ -473,6 +497,12 @@ export default function Profile({ usersId }: ProfileProps) {
                 />
                 <InfoCard
                   icon={<MapPin className="h-5 w-5" />}
+                  label="Province"
+                  value={profileData.province || "Not specified"}
+                  color="red"
+                />
+                <InfoCard
+                  icon={<MapPin className="h-5 w-5" />}
                   label="Country"
                   value={profileData.country || "Not specified"}
                   color="purple"
@@ -486,7 +516,97 @@ export default function Profile({ usersId }: ProfileProps) {
               </div>
             </div>
 
-            <Separator className="my-8" />
+            {/* Contract Info Section - Only show for authorized roles */}
+            {canViewContractSection && (
+              <>
+                <Separator className="my-8" />
+
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                      <Briefcase className="h-5 w-5 text-[rgb(96,57,187)]" />
+                      Contract Information
+                    </h3>
+                  </div>
+
+                  {/* Wrap ContractInfo in error boundary or conditional render */}
+                  <div className="bg-white rounded-xl border p-6">
+                    {userId ? (
+                      <ContractInfo userId={userId} canEdit={canEditProfile} />
+                    ) : (
+                      <div className="text-center py-8">
+                        <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h4 className="text-lg font-medium text-gray-700 mb-2">
+                          No Contract Information
+                        </h4>
+                        <p className="text-gray-500 mb-4">
+                          Contract details will be available after contract
+                          creation
+                        </p>
+                        {canEditProfile && (
+                          <Button
+                            onClick={() => handleEditSection("contract")}
+                            variant="outline"
+                            size="sm"
+                          >
+                            Add Contract
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <Separator className="my-8" />
+              </>
+            )}
+
+            {/* Education Section - Always visible to authenticated users */}
+            {canViewEducationSection && (
+              <>
+                <div className="mb-8 relative group">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                      <GraduationCap className="h-5 w-5 text-[rgb(96,57,187)]" />
+                      Education Information
+                    </h3>
+                  </div>
+
+                  {/* Education Info Component */}
+                  <div className="bg-white rounded-xl border p-6">
+                    <EducationInfo
+                      userId={userId}
+                      canEdit={canEditProfile}
+                      onEducationUpdated={() => {
+                        // This will refresh the education data when new education is added
+                        refetch();
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <Separator className="my-8" />
+              </>
+            )}
+            {/* Show message for PROJECT_MANAGER about restricted access */}
+            {!canViewContractSection &&
+              currentUser?.systemRole === "PROJECT_MANAGER" && (
+                <div className="mb-8 bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+                  <div className="flex items-start gap-3">
+                    <Lock className="h-5 w-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <h4 className="text-lg font-semibold text-yellow-800 mb-1">
+                        Restricted Access
+                      </h4>
+                      <p className="text-yellow-700">
+                        Contract information is restricted to HRM, Operation
+                        Managers, and ADMIN only. As a PROJECT_MANAGER, you can
+                        view personal and project information.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             {/* Projects and Positions Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

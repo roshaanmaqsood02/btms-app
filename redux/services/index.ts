@@ -1,11 +1,20 @@
 import { authApi } from "./authApi";
+import { contractApi } from "./contractApi";
 import { userApi } from "./userApi";
+import { educationApi } from "./educationApi";
 
 // Combine all API reducers
 export const combinedApiReducers = {
   [authApi.reducerPath]: authApi.reducer,
-  [userApi.reducerPath]: authApi.reducer,
+  [userApi.reducerPath]: userApi.reducer,
+  [contractApi.reducerPath]: contractApi.reducer,
+  [educationApi.reducerPath]: educationApi.reducer,
 };
 
 // Combine all API middleware
-export const combinedApiMiddlewares = [authApi.middleware, userApi.middleware];
+export const combinedApiMiddlewares = [
+  authApi.middleware,
+  userApi.middleware,
+  contractApi.middleware,
+  educationApi.middleware,
+];

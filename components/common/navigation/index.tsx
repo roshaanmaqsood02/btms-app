@@ -98,18 +98,18 @@ export function Navigation({ onLogout }: NavigationProps) {
                     {user?.profilePic && (
                       <AvatarImage
                         src={getProfilePicUrl()}
-                        alt={user?.name || "User"}
+                        alt={user?.firstname + " " + user?.lastname || "User"}
                         className="object-cover"
                       />
                     )}
                     <AvatarFallback className="bg-indigo-600 text-white font-medium">
-                      {getInitials(user?.name)}
+                      {getInitials(user?.firstname + " " + user?.lastname)}
                     </AvatarFallback>
                   </Avatar>
 
                   <div className="hidden sm:flex flex-col items-start leading-tight">
                     <span className="text-sm font-medium text-gray-900">
-                      {user?.name}
+                      {user?.firstname} {user?.lastname}
                     </span>
                     <span className="text-xs text-gray-500">
                       {user?.systemRole}

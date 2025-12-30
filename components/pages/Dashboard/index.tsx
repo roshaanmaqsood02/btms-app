@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ChartRadialText } from "./components/charts/EmployeePieChart";
 import { InterneeChartRadialText } from "./components/charts/InternsPieChart";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import ProfileImage from "@/public/images/dashboard_image.jpg";
 import Image from "next/image";
 import PayrollChart from "./components/charts/PayrollChart";
