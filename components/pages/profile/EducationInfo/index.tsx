@@ -235,7 +235,7 @@ export default function EducationInfo({
   const currentUser = useAppSelector(selectCurrentUser);
   const targetUserId = userId || currentUser?.id;
 
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState<boolean>(false);
   const [selectedEducation, setSelectedEducation] = useState<Education | null>(
     null
   );

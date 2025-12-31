@@ -75,21 +75,6 @@ export default function Sidebar() {
     router.push(url);
   };
 
-  // Handle scroll on sidebar only
-  useEffect(() => {
-    const sidebar = sidebarRef.current;
-    if (!sidebar) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (sidebar.contains(e.target as Node)) {
-        e.stopPropagation();
-      }
-    };
-
-    window.addEventListener("wheel", handleWheel, { passive: false });
-    return () => window.removeEventListener("wheel", handleWheel);
-  }, []);
-
   // Menu items data with URLs
   const menuItems: MenuItem[] = [
     {
@@ -250,14 +235,11 @@ export default function Sidebar() {
     <div
       ref={sidebarRef}
       className={cn(
-        "relative flex flex-col bg-[rgb(96,57,187)] transition-all duration-300 ease-in-out overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent",
+        "fixed left-0 top-0 z-40 flex flex-col bg-[rgb(96,57,187)]",
+        "h-screen overflow-y-auto transition-all duration-300 ease-in-out",
+        "scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent scrollbar-hide",
         isCollapsed ? "w-[60px]" : "w-[250px]"
       )}
-      style={{
-        height: "100vh",
-        scrollbarWidth: "thin",
-        scrollbarColor: "rgba(255,255,255,0.2) transparent",
-      }}
     >
       {/* Header with Logo and Collapse Button */}
       <div

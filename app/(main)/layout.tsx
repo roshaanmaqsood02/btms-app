@@ -13,16 +13,20 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen w-full bg-gray-200">
+    <div className="min-h-screen w-full bg-gray-200">
       {/* Sidebar */}
       <Sidebar />
 
-      <div className="flex flex-col flex-1">
+      {/* Content Wrapper */}
+      <div
+        className="flex flex-col transition-all duration-300"
+        style={{ marginLeft: "250px" }} // match expanded sidebar width
+      >
         {/* Navigation */}
         <NavigationWrapper />
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4">{children}</main>
       </div>
     </div>
   );

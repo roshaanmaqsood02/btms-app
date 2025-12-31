@@ -67,9 +67,9 @@ export default function CreateEducationInfo({
     description: "",
   });
 
-  const [isOngoing, setIsOngoing] = useState(false);
+  const [isOngoing, setIsOngoing] = useState<boolean>(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Degree Options
   const DEGREE_OPTIONS = [

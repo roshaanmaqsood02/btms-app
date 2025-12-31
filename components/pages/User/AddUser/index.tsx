@@ -1,20 +1,23 @@
 "use client";
+
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PersonalInfo from "./AddPersonalInfo";
 import OfficialInfo from "./AddOfficialInfo";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, Plus, GraduationCap } from "lucide-react";
+import { Save, Plus, GraduationCap, Package } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useCreateUserMutation } from "@/redux/services/userApi";
 import { useCreateEmployeeContractMutation } from "@/redux/services/contractApi";
-import { useCreateEducationMutation } from "@/redux/services/educationApi"; // ← NEW IMPORT
+import { useCreateEducationMutation } from "@/redux/services/educationApi";
 import { selectCurrentUser } from "@/redux/slices/authSlice";
 import { useAppSelector } from "@/redux/hook";
 import { CreateContractRequest } from "@/redux/types/contract.type";
 import CreateEducationInfo from "./AddEducationInfo";
+import CreateAssetInfo from "./AddAssetInfo";
 import { Badge } from "@/components/ui/badge";
+import { CreateAssetRequest, AssetType } from "@/redux/types/asset.type";
 
 interface AddUserProps {
   id?: string;
@@ -40,6 +43,11 @@ interface EducationItem {
   description?: string;
 }
 
+// Asset item type
+interface AssetItem extends CreateAssetRequest {
+  id?: number;
+}
+
 export default function AddUser({}: AddUserProps) {
   const router = useRouter();
   const [tabValue, setTabValue] = useState<TabValues>("personal_info");
@@ -47,7 +55,7 @@ export default function AddUser({}: AddUserProps) {
 
   const [createUser, { isLoading: isCreatingUser }] = useCreateUserMutation();
   const [createEmployeeContract] = useCreateEmployeeContractMutation();
-  const [createEducation] = useCreateEducationMutation(); // ← NEW MUTATION
+  const [createEducation] = useCreateEducationMutation();
 
   // Complete form state
   const [formData, setFormData] = useState({
@@ -84,6 +92,8 @@ export default function AddUser({}: AddUserProps) {
     workLocation: "ON_SITE" as CreateContractRequest["workLocation"],
     // Education
     educationRecords: [] as EducationItem[],
+    // Assets
+    assetRecords: [] as AssetItem[],
   });
 
   // Handle form data changes
@@ -107,6 +117,14 @@ export default function AddUser({}: AddUserProps) {
       educationRecords: [...prev.educationRecords, educationData],
     }));
     toast.success("Education record added");
+  };
+
+  const handleAssetAdded = (assetData: CreateAssetRequest) => {
+    setFormData((prev) => ({
+      ...prev,
+      assetRecords: [...prev.assetRecords, assetData],
+    }));
+    toast.success("Asset record added");
   };
 
   const handleSubmit = async () => {
@@ -176,11 +194,11 @@ export default function AddUser({}: AddUserProps) {
 
       console.log("Creating user with data:", userData);
 
-      // Step 1: Create the user
+      // Create the user
       const userResult = await createUser(userData).unwrap();
       console.log("User created:", userResult);
 
-      // Step 2: Prepare and create contract
+      // Prepare and create contract
       const contractData: CreateContractRequest = {
         employeeStatus: formData.employeeStatus || "EMPLOYEED",
         jobType: formData.jobType || "FULL_TIME",
@@ -208,7 +226,7 @@ export default function AddUser({}: AddUserProps) {
         data: contractData,
       }).unwrap();
 
-      // Step 3: Create education records (if any)
+      // Create education records (if any)
       if (formData.educationRecords.length > 0) {
         try {
           const educationPromises = formData.educationRecords.map((edu) =>
@@ -238,16 +256,33 @@ export default function AddUser({}: AddUserProps) {
             description:
               "User created successfully. Add education later from profile.",
           });
-          // Continue — user and contract are already created
         }
       }
 
+      // Note: Assets cannot be created here because we need the user ID
+      // Assets will be created later from the user profile
+      if (formData.assetRecords.length > 0) {
+        toast.info("Assets Pending", {
+          description: `${formData.assetRecords.length} asset(s) will need to be assigned after user creation.`,
+        });
+      }
+
+      const successMessage = `${userResult.firstname} ${
+        userResult.lastname
+      } has been created successfully${
+        formData.educationRecords.length > 0 ? " with education records" : ""
+      }${
+        formData.assetRecords.length > 0
+          ? ". Assets can be assigned from the user profile."
+          : "."
+      }`;
+
       toast.success("User created successfully!", {
-        description: `${userResult.firstname} ${
-          userResult.lastname
-        } has been added with contract${
-          formData.educationRecords.length > 0 ? " and education" : ""
-        }`,
+        description: successMessage,
+        action: {
+          label: "View User",
+          onClick: () => router.push(`/users/${userResult.id}`),
+        },
       });
 
       router.push("/users");
@@ -274,7 +309,7 @@ export default function AddUser({}: AddUserProps) {
   };
 
   const EducationSection = () => {
-    const [isAddingEducation, setIsAddingEducation] = useState(false);
+    const [isAddingEducation, setIsAddingEducation] = useState<boolean>(false);
 
     return (
       <div className="bg-white p-10 rounded-2xl">
@@ -405,27 +440,158 @@ export default function AddUser({}: AddUserProps) {
     );
   };
 
+  const AssetsSection = () => {
+    const [isAddingAsset, setIsAddingAsset] = useState<boolean>(false);
+
+    return (
+      <div className="bg-white p-10 rounded-2xl">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            Assets Information
+          </h2>
+          <p className="text-gray-600">
+            Hardware and equipment to be assigned to the employee
+          </p>
+        </div>
+
+        {/* Asset Records List */}
+        {formData.assetRecords.length > 0 ? (
+          <div className="mb-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-700">
+                Asset Records ({formData.assetRecords.length})
+              </h3>
+              <Button
+                onClick={() => setIsAddingAsset(true)}
+                variant="outline"
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Another
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {formData.assetRecords.map((asset, index) => (
+                <div
+                  key={index}
+                  className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-semibold text-gray-900">
+                        {asset.assetName}
+                      </h4>
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {asset.type}
+                      </Badge>
+                    </div>
+                    <Badge className="bg-green-600 text-xs">
+                      {asset.assetTag}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">
+                    {asset.company} {asset.model}
+                  </p>
+                  <p className="text-sm text-gray-500 mb-2 font-mono text-xs">
+                    SN: {asset.serialNumber}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                    {asset.ram && (
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">RAM:</span>
+                        <span>{asset.ram}</span>
+                      </div>
+                    )}
+                    {asset.storage && (
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">Storage:</span>
+                        <span>{asset.storage}</span>
+                      </div>
+                    )}
+                    {asset.screenSize && (
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">Screen:</span>
+                        <span>{asset.screenSize}</span>
+                      </div>
+                    )}
+                    {asset.cpu && (
+                      <div className="flex items-center gap-1 col-span-2">
+                        <span className="font-medium">CPU:</span>
+                        <span className="truncate">{asset.cpu}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+            <div className="text-gray-400 mb-4">
+              <Package className="h-12 w-12 mx-auto" />
+            </div>
+            <h4 className="text-lg font-medium text-gray-700 mb-2">
+              No Asset Records Added
+            </h4>
+            <p className="text-gray-500 mb-4">
+              Add hardware assets to be assigned to the employee
+            </p>
+          </div>
+        )}
+
+        {/* Add Asset Form */}
+        {isAddingAsset || formData.assetRecords.length === 0 ? (
+          <div className="border-t pt-6">
+            <CreateAssetInfo
+              userId={0}
+              onAssetCreated={() => {
+                setIsAddingAsset(false);
+              }}
+              currentUserRole={currentUser?.systemRole}
+              onAssetAdded={handleAssetAdded}
+            />
+            {isAddingAsset && formData.assetRecords.length > 0 && (
+              <div className="mt-4 text-center">
+                <Button variant="ghost" onClick={() => setIsAddingAsset(false)}>
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center">
+            <Button
+              onClick={() => setIsAddingAsset(true)}
+              variant="outline"
+              className="w-full py-6 border-dashed"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Add Asset Record
+            </Button>
+          </div>
+        )}
+
+        {/* Info Note */}
+        {formData.assetRecords.length > 0 && !isAddingAsset && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <p className="text-sm text-yellow-700">
+                <strong>Important:</strong> Assets will be assigned after user
+                creation. They cannot be assigned until the user account is
+                created.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="p-5">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => router.back()}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Users
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Add New User</h1>
-              <p className="text-gray-600">
-                Create a new user account in the system
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center justify-end">
           <Button
             onClick={handleSubmit}
             disabled={isCreatingUser}
@@ -501,17 +667,7 @@ export default function AddUser({}: AddUserProps) {
             <EducationSection />
           </TabsContent>
           <TabsContent value="assets">
-            <div className="bg-white p-10 rounded-2xl">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                Assets Information
-              </h2>
-              <p className="text-gray-600">Company assets assigned to user</p>
-              <div className="mt-6 p-8 text-center border-2 border-dashed border-gray-200 rounded-lg">
-                <p className="text-gray-500 text-lg">
-                  Assets section - Coming soon
-                </p>
-              </div>
-            </div>
+            <AssetsSection />
           </TabsContent>
           <TabsContent value="credentials">
             <div className="bg-white p-10 rounded-2xl">

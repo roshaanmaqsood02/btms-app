@@ -36,6 +36,7 @@ import {
   ArrowLeft,
   Lock,
   GraduationCap,
+  Laptop,
 } from "lucide-react";
 import { LoadingState } from "@/components/common/loadingState";
 import { NoProfileStates } from "@/components/pages/Profile/components/NoProfileState";
@@ -45,6 +46,7 @@ import { toast } from "sonner";
 import DeleteUserDialog from "../User/DeleteUser";
 import ContractInfo from "./ContractInfo";
 import EducationInfo from "./EducationInfo";
+import AssetsInfo from "./AssetInfo";
 
 interface ProfileProps {
   usersId: string;
@@ -588,6 +590,50 @@ export default function Profile({ usersId }: ProfileProps) {
                 <Separator className="my-8" />
               </>
             )}
+
+            {/* Assets Section - Always visible to authenticated users */}
+            {canViewEducationSection && (
+              <>
+                <div className="mb-8 relative group">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                      <Laptop className="h-5 w-5 text-[rgb(96,57,187)]" />
+                      Assets Information
+                    </h3>
+                    {canEditProfile && (
+                      <Button
+                        onClick={() => {
+                          // You can open a modal or navigate to assets management page
+                          toast.info(
+                            "Use the + button in the assets section to add new assets"
+                          );
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[rgb(96,57,187)]/10 hover:text-[rgb(96,57,187)]"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Assets Info Component */}
+                  <div className="bg-white rounded-xl border p-6">
+                    <AssetsInfo
+                      userId={userId}
+                      canEdit={canEditProfile}
+                      onAssetUpdated={() => {
+                        // This will refresh the assets data when new asset is added
+                        refetch();
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <Separator className="my-8" />
+              </>
+            )}
+
             {/* Show message for PROJECT_MANAGER about restricted access */}
             {!canViewContractSection &&
               currentUser?.systemRole === "PROJECT_MANAGER" && (

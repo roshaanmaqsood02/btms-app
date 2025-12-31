@@ -2,6 +2,7 @@ import { authApi } from "./authApi";
 import { contractApi } from "./contractApi";
 import { userApi } from "./userApi";
 import { educationApi } from "./educationApi";
+import { assetApi } from "./assetApi";
 
 // Combine all API reducers
 export const combinedApiReducers = {
@@ -9,6 +10,7 @@ export const combinedApiReducers = {
   [userApi.reducerPath]: userApi.reducer,
   [contractApi.reducerPath]: contractApi.reducer,
   [educationApi.reducerPath]: educationApi.reducer,
+  [assetApi.reducerPath]: assetApi.reducer,
 };
 
 // Combine all API middleware
@@ -17,4 +19,5 @@ export const combinedApiMiddlewares = [
   userApi.middleware,
   contractApi.middleware,
   educationApi.middleware,
+  assetApi.middleware,
 ];

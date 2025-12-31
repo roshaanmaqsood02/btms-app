@@ -205,7 +205,7 @@ export default function ContractInfo({
   canEdit = true,
   onEdit,
 }: ContractInfoProps) {
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState<boolean>(false);
   const currentUser = useAppSelector(selectCurrentUser);
   const targetUserId = userId || currentUser?.id;
 
