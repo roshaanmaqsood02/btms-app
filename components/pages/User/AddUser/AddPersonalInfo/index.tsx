@@ -431,7 +431,6 @@ export default function PersonalInfo({
                 </SelectContent>
               </Select>
             </div>
-
             {/* Department */}
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
@@ -443,7 +442,6 @@ export default function PersonalInfo({
                 className="py-2"
               />
             </div>
-
             {/* Location */}
             <div className="space-y-2">
               <Label htmlFor="city">City</Label>
@@ -455,7 +453,16 @@ export default function PersonalInfo({
                 className="py-2"
               />
             </div>
-
+            <div className="space-y-2">
+              <Label htmlFor="province">Province</Label>
+              <Input
+                id="province"
+                value={localFormData.province}
+                onChange={(e) => handleChange("province", e.target.value)}
+                placeholder="Province"
+                className="py-2"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="country">Country</Label>
               <Input
@@ -466,7 +473,6 @@ export default function PersonalInfo({
                 className="py-2"
               />
             </div>
-
             {/* Contact Info */}
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
@@ -479,7 +485,6 @@ export default function PersonalInfo({
                 className="py-2"
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="postalCode">Postal Code</Label>
               <Input
